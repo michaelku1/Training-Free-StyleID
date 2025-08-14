@@ -88,7 +88,6 @@ class StyleIDStableAudioInference:
         print(f"Loading StableAudio model from {model_path}...")
         print(f"Memory before loading: {get_memory_usage()[0]:.2f} GB allocated")
 
-
         
         # Load the StableAudio pipeline
         self.pipeline = StyleIDStableAudioOpenPipeline.load_checkpoint(
@@ -183,10 +182,12 @@ class StyleIDStableAudioInference:
     def extract_features_ddim(
         self, 
         audio_path: str, 
+        guidance_scale: float = 7.5,
         num_steps: int = 50
     ) -> Tuple[torch.Tensor, List[Dict]]:
         """
         Extract features using DDIM inversion with memory optimization.
+        (wrapper for the pipeline's extract_features_ddim method)
         
         Args:
             audio_path: Path to audio file
@@ -202,16 +203,18 @@ class StyleIDStableAudioInference:
             clear_memory()
             print(f"Memory before feature extraction: {get_memory_usage()[0]:.2f} GB allocated")
         
-        # Setup feature extraction
+        ####### Setup feature extraction #######
+        # 1. setup qkv feature store
+        # 2. register hooks
         self.pipeline.setup_feature_extraction()
         
-        # Extract features + DDIM sampling with memory monitoring
+        ####### DDIM sampling for predefined steps #######
+        # vae encode, latent scaling + DDIM sampling with memory monitoring
         with torch.no_grad():
             latents, features = self.pipeline.extract_features_ddim(
-                audio=audio_path,
-                num_steps=num_steps,
-                save_feature_steps=num_steps
-            )
+            audio=audio_path,
+            guidance_scale=guidance_scale,
+            num_steps=num_steps)
         
         if self.enable_memory_optimization:
             print(f"Memory after feature extraction: {get_memory_usage()[0]:.2f} GB allocated")
@@ -224,13 +227,9 @@ class StyleIDStableAudioInference:
         content_audio_path: str,
         style_audio_path: str,
         output_path: str,
-        prompt_start: str = "electronic music",  # Kept for compatibility, not used by StableAudio
-        prompt_end: str = "electronic music",    # Kept for compatibility, not used by StableAudio
-        alpha: float = 0.5,
+        prompt: str = "",
         num_inference_steps: int = 50,
-        guidance_scale: float = 7.5,  # Kept for compatibility, not used by StableAudio
-        denoising_strength: float = 0.8,  # Kept for compatibility, not used by StableAudio
-        seed: int = 42
+        guidance_scale: float = 7.5,
     ) -> Image.Image:
         """
         Perform StyleID-enhanced audio style transfer with memory optimization.
@@ -272,9 +271,9 @@ class StyleIDStableAudioInference:
         # Step 2: Extract features using DDIM inversion
         print("\nStep 2: Extracting content features...")
 
-        # Extract features and perform DDIM inversion
+        # NOTE DDIM inversion for content
         content_latents, content_features = self.extract_features_ddim(
-            content_audio_path, num_steps=num_inference_steps
+            content_audio_path, guidance_scale=guidance_scale, num_steps=num_inference_steps
         )
         
         # Clear memory between extractions
@@ -284,9 +283,9 @@ class StyleIDStableAudioInference:
         
         print("Extracting style features...")
 
-        # Extract features and perform DDIM inversion
+        # NOTE encode, scale latents, perform DDIM inversion for style
         style_latents, style_features = self.extract_features_ddim(
-            style_audio_path, num_steps=num_inference_steps
+            style_audio_path, guidance_scale=guidance_scale, num_steps=num_inference_steps
         )
         
         # Clear memory after both extractions
@@ -296,24 +295,6 @@ class StyleIDStableAudioInference:
         
         # Step 3: Prepare inference inputs
         print("\nStep 3: Preparing inference parameters...")
-        # Note: StableAudio doesn't use text conditioning, so we create dummy inputs
-        # These are kept for compatibility but not used in actual generation
-        inputs = {
-            'alpha': alpha,
-            'num_inference_steps': num_inference_steps,
-            'start': {
-                'prompt': prompt_start,
-                'seed': seed,
-                'denoising': denoising_strength,
-                'guidance': guidance_scale
-            },
-            'end': {
-                'prompt': prompt_end,
-                'seed': seed + 1,
-                'denoising': denoising_strength,
-                'guidance': guidance_scale
-            }
-        }
         
         # Step 4: Perform StyleID-enhanced generation
         print("\nStep 4: Performing StyleID-enhanced generation...")
@@ -322,18 +303,23 @@ class StyleIDStableAudioInference:
         if self.enable_memory_optimization:
             allocated, reserved = get_memory_usage()
             print(f"Memory before generation: {allocated:.2f} GB allocated")
+
+        # NOTE use content latent as is when without adain
+        if self.styleid_params['use_adain_init']:
+            # use content latent as is when without adain
+            latent_cs = content_latents
+        else:
+            # Apply AdaIN: normalize content latent and scale with style statistics
+            # This transfers the global style characteristics (mean/std) to the content
+            latent_cs = (content_latents - content_latents.mean(dim=(2, 3), keepdim=True)) / (content_latents.std(dim=(2, 3), keepdim=True) + 1e-4) * style_latents.std(dim=(2, 3), keepdim=True) + style_latents.mean(dim=(2, 3), keepdim=True)
+            
         
-        # Where style injection happens
+        # NOTE DDIM reverse process (Where style injection happens)
         with torch.no_grad():
-            # Create dummy text embeddings for compatibility (not used by StableAudio)
-            dummy_text_embeddings = torch.zeros(1, 77, 768, device=self.device, dtype=self.dtype)
-            
-            # Create initial latents (this should come from content audio)
-            init_latents = torch.randn(1, 4, 64, 64, device=self.device, dtype=self.dtype)  # Placeholder
-            
+            # NOTE pass text (str) and content-style latents (embeddings) to the pipeline
             result = self.pipeline.styleid_generate(
-                text_embeddings=dummy_text_embeddings,  # Dummy embeddings
-                init_latents=init_latents,
+                prompt=prompt,
+                init_latents=latent_cs,
                 num_inference_steps=num_inference_steps,
                 guidance_scale=guidance_scale,  # Kept for compatibility, not used
                 start_step=self.styleid_params['start_step']

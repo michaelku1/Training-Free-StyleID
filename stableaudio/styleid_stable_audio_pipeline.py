@@ -99,7 +99,7 @@ if STABLE_AUDIO_TOOLS_AVAILABLE:
             except Exception as e:
                 raise Exception(f"Could not load stable-audio-open model: {e}")
             
-        def forward(self, x, t, encoder_hidden_states=None):
+        def forward(self, x, t):
             # Use stable-audio-tools model
             # return type('obj', (object,), {'sample': self.model(x, t)})()
             return self.model(x, t)
@@ -391,7 +391,6 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             if hasattr(diffusion_transformer, 'attn'):
                 dit_layers.append(diffusion_transformer)
 
-        breakpoint()
 
         return dit_layers
     
@@ -469,7 +468,7 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         return attention_probs, query, key, value, hidden_states
     
     # NOTE DDIM inversion - adapted to match diffusers implementation
-    def extract_features_ddim(self, audio, num_steps=50, save_feature_steps=50):
+    def extract_features_ddim(self, audio, guidance_scale=7.5, num_steps=50):
         """
         Extract features using DDIM inversion with memory optimization.
         Adapted to match the diffusers implementation.
@@ -477,7 +476,6 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         Args:
             audio: Input audio (content or style)
             num_steps: Number of DDIM inversion steps
-            save_feature_steps: Number of steps to save features for
             
         Returns:
             Tuple of (latent, features)
@@ -506,11 +504,11 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             # Convert audio to tensor format expected by AudioVAE
             audio_tensor = self._preprocess_audio(audio)
         
-        # encoder with audio vae
+        # encode spectrogram to latent
         init_latent_dist = self.audio_vae.encode(audio_tensor).latent_dist
         init_latents = init_latent_dist.sample()
         # AudioVAE might have different scaling factor than image VAE
-        init_latents = 0.18215 * init_latents  # Adjust if needed for audio
+        init_latents = 0.18215 * init_latents  # scale latents
 
         # DDIM inversion with feature extraction - matching diffusers implementation
         latents = init_latents.clone()
@@ -527,10 +525,17 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
                 # Set current timestep for attention hooks
                 self.cur_t = t.item() if hasattr(t, 'item') else t
                 
-                # Predict noise - Stable Audio Open v1.0 doesn't use text conditioning
-                # So we don't pass encoder_hidden_states to the DiT
+                # Predict the noise residual
                 noise_pred = self.diffusion_transformer(cur_latent, t.to(cur_latent.device)).sample
                 
+                # For text condition on stable diffusion
+                if noise_pred.shape[0] == 2:
+                    # perform guidance
+                    noise_pred_text, noise_pred_uncond = noise_pred.chunk(2)
+                    noise_pred = noise_pred_uncond + guidance_scale * (noise_pred_text - noise_pred_uncond)
+                    # NOTE: for sampling, we just need one latent
+                    cur_latent, _ = cur_latent.chunk(2)
+
                 # DDIM inversion formula - matching diffusers implementation
                 current_t = max(0, t.item() - (1000//num_inference_steps))
                 next_t = t
@@ -573,136 +578,6 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         device = next(self.parameters()).device if hasattr(self, 'parameters') else torch.device('cpu')
         return audio_tensor.to(device=device, dtype=self.audio_vae.dtype)
 
-    def styleid_diffuse(
-        self,
-        content_audio_path: str,
-        style_audio_path: str,
-        output_path: str,
-        prompt: str = "",  # Kept for compatibility but not used by Stable Audio Open v1.0
-        use_adain_init: bool = True,
-        use_attn_injection: bool = True,
-        gamma: float = 0.75,
-        T: float = 1.5,
-        start_step: int = 49,
-        num_inference_steps: int = 50,
-        guidance_scale: float = 7.5,  # Kept for compatibility but not used
-    ):
-        """
-        StyleID-enhanced audio diffusion for audio style transfer.
-        Adapted to match the diffusers implementation more closely.
-        
-        Note: Stable Audio Open v1.0 doesn't support text conditioning, so prompt and guidance_scale
-        are kept for compatibility but not used in the actual generation.
-        
-        Args:
-            content_audio_path: Path to content audio file
-            style_audio_path: Path to style audio file
-            output_path: Path to save output audio
-            prompt: Text prompt for generation (kept for compatibility, not used)
-            use_adain_init: Whether to use AdaIN initialization
-            use_attn_injection: Whether to use attention feature injection
-            gamma: Query preservation parameter
-            T: Temperature scaling parameter
-            start_step: Starting step for feature injection
-            num_inference_steps: Number of inference steps
-            guidance_scale: Guidance scale for classifier-free guidance (kept for compatibility, not used)
-        """
-        self.gamma = gamma
-        self.T = T
-        self.start_step = start_step
-
-        # Setup feature extraction hooks
-        self.setup_feature_extraction()
-        
-        # Extract content and style features - matching diffusers implementation
-        print("Extracting content features...")
-        self.trigger_get_qkv = True
-        self.trigger_modify_qkv = False
-        
-        # Clear previous features
-        self.attn_features = {}
-        for i in self.attn_layers:
-            layer_name = f"layer{i}_attn"
-            self.attn_features[layer_name] = {}
-        
-        content_latents, _ = self.extract_features_ddim(
-            content_audio_path, 
-            num_steps=num_inference_steps,
-            save_feature_steps=num_inference_steps
-        )
-        content_features = copy.deepcopy(self.attn_features)
-        
-        print("Extracting style features...")
-        # Clear features for style extraction
-        self.attn_features = {}
-        for i in self.attn_layers:
-            layer_name = f"layer{i}_attn"
-            self.attn_features[layer_name] = {}
-        
-        style_latents, _ = self.extract_features_ddim(
-            style_audio_path,
-            num_steps=num_inference_steps, 
-            save_feature_steps=num_inference_steps
-        )
-        style_features = copy.deepcopy(self.attn_features)
-        
-        # Cleanup attention hooks after feature extraction
-        self.cleanup_attention_hooks()
-
-        # AdaIN initialization
-        if use_adain_init:
-            init_latents = adain(content_latents, style_latents)
-        else:
-            init_latents = content_latents
-
-        # Merge features for injection - matching diffusers implementation
-        if use_attn_injection:
-            # Set modify features like in diffusers implementation
-            for layer_name in style_features.keys():
-                self.attn_features_modify[layer_name] = {}
-                for t in self.scheduler.timesteps:
-                    t_val = t.item() if hasattr(t, 'item') else t
-                    if t_val in content_features[layer_name] and t_val in style_features[layer_name]:
-                        # content as q / style as kv - matching diffusers implementation
-                        self.attn_features_modify[layer_name][t_val] = (
-                            content_features[layer_name][t_val][0],  # content q
-                            style_features[layer_name][t_val][1],    # style k
-                            style_features[layer_name][t_val][2]     # style v
-                        )
-        else:
-            self.attn_features_modify = {}
-
-        # Setup for feature injection during generation
-        self.trigger_get_qkv = False
-        self.trigger_modify_qkv = use_attn_injection
-        
-        # Re-register hooks for injection phase
-        if use_attn_injection:
-            self._register_attention_hooks()
-
-        # Text encoding - kept for compatibility but not used since Stable Audio Open v1.0 doesn't support text conditioning
-        if prompt:
-            text_embedding = self._encode_text(prompt)
-        else:
-            # Use dummy embedding if no prompt (not used by DiT)
-            batch_size = init_latents.shape[0]
-            text_embedding = torch.zeros(batch_size, 77, 768, device=self.device, dtype=self.dtype)
-
-        # Run StyleID-enhanced generation
-        outputs = self.styleid_generate(
-            text_embeddings=text_embedding,
-            init_latents=init_latents,
-            num_inference_steps=num_inference_steps,
-            guidance_scale=guidance_scale,
-            start_step=start_step,
-        )
-
-        # Decode and save audio
-        audio = self._decode_audio(outputs["latents"])
-        self._save_audio(audio, output_path)
-        
-        return audio
-
     def _encode_text(self, prompt: str):
         """Encode text prompt using the text encoder."""
         inputs = self.tokenizer(
@@ -732,45 +607,32 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
     @torch.no_grad()
     def styleid_generate(
         self,
-        text_embeddings: torch.Tensor,  # Kept for compatibility but not used by Stable Audio Open v1.0
+        prompt: str,
         init_latents: torch.Tensor,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,  # Kept for compatibility but not used
-        negative_prompt: T.Optional[T.Union[str, T.List[str]]] = None,  # Kept for compatibility but not used
-        num_audio_per_prompt: int = 1,
         eta: T.Optional[float] = 0.0,
         start_step: int = 49,
-        **kwargs,
+        device: str = "cuda",
     ):
         """
+        DDIM sampling (reverse process)
+
         StyleID-enhanced audio generation with attention feature injection.
         Adapted to match the diffusers implementation.
         
         Note: Stable Audio Open v1.0 doesn't support text conditioning, so text_embeddings,
         guidance_scale, and negative_prompt are kept for compatibility but not used in the actual generation.
         """
-        batch_size = text_embeddings.shape[0]
+
+        pred_images = []
+        pred_latents = []
 
         # Set timesteps
         self.scheduler.set_timesteps(num_inference_steps)
 
-        # Duplicate text embeddings for each generation per prompt
-        bs_embed, seq_len, _ = text_embeddings.shape
-        text_embeddings = text_embeddings.repeat(1, num_audio_per_prompt, 1)
-        text_embeddings = text_embeddings.view(bs_embed * num_audio_per_prompt, seq_len, -1)
-
-        # Stable Audio Open v1.0 doesn't support text conditioning, so we skip classifier-free guidance
-        # But we keep the text encoding infrastructure for compatibility
-        do_classifier_free_guidance = False  # Disable CFG since no text conditioning
-
-        latents_dtype = text_embeddings.dtype
-
-        # Add noise to latents
-        device = init_latents.device  # Use the same device as init_latents
-        noise = torch.randn(
-            init_latents.shape, device=device, dtype=latents_dtype
-        )
-        latents = self.scheduler.add_noise(init_latents, noise, self.scheduler.timesteps[0])
+        # NOTE: text condition (conditional + unconditional text embeddings) on stable diffusion
+        text_condition_embedding = self.get_text_condition(prompt, device=device)
 
         # Prepare extra kwargs for scheduler
         accepts_eta = "eta" in set(inspect.signature(self.scheduler.step).parameters.keys())
@@ -780,7 +642,7 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
 
         timesteps = self.scheduler.timesteps.to(device)
 
-        # StyleID generation loop - matching diffusers implementation
+        # NOTE DDIM sampling (reverse process)
         for i, t in enumerate(self.progress_bar(timesteps)):
             # Set current timestep for attention hooks
             self.cur_t = t.item() if hasattr(t, 'item') else t
@@ -791,24 +653,78 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             else:
                 self.trigger_modify_qkv = True
 
-            # No classifier-free guidance since Stable Audio Open v1.0 doesn't support text conditioning
-            latent_model_input = latents
-            latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
-
-            # Predict noise with StyleID injection
+            # NOTE Predict noise with StyleID injection
             noise_pred = self.diffusion_transformer(
                 latent_model_input, 
-                t
+                t,
+                text_condition_embedding,
             ).sample
 
-            # No guidance since no text conditioning
-            # noise_pred is already the final prediction
+            # NOTE perform guidance on conditional and unconditional unet outputs
+            unconditional_output, conditional_output = noise_pred.chunk(2)
+            noise_pred = conditional_output + guidance_scale * (conditional_output - unconditional_output)
 
-            # Compute previous noisy sample
+
+            # NOTE sampling: Compute previous noisy sample
             latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
-        return dict(latents=latents, nsfw_content_detected=False)
+            # Standard DDIM step: move from t to t-1 (denoising)
+            prev_noisy_sample = scheduler.step(noisy_residual, t, input).prev_sample                # coef * P_t(e_t(x_t)) + D_t(e_t(x_t))
+            pred_original_sample = scheduler.step(noisy_residual, t, input).pred_original_sample    # D_t(e_t(x_t))
+            # update sample
+            input = prev_noisy_sample
+            
+            # save latents
+            pred_latents.append(pred_original_sample)
+            # save images (decoded latents)
+            pred_images.append(decode_latent(pred_original_sample, **decode_kwargs))
+
+        return dict(latents=latents)
     
+    def get_text_condition(self, text, device="cuda"):
+        # NOTE if nothing is passed, use empty prompt
+        if text is None:
+            uncond_input = self.tokenizer(
+                [""], padding="max_length", max_length=self.tokenizer.model_max_length, return_tensors="pt"
+            )
+            uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(device))[0].to(device)
+            return {'encoder_hidden_states': uncond_embeddings}
+        
+        text_embeddings, uncond_embeddings = self.get_text_embedding(text, self.text_encoder, self.tokenizer)
+        text_cond = [text_embeddings, uncond_embeddings]
+        denoise_kwargs = {
+            'encoder_hidden_states': torch.cat(text_cond)
+        }
+        return denoise_kwargs
+    
+    def get_text_embedding(self, text, text_encoder, tokenizer, device="cuda"):
+        """
+        Get both text and uncond text embeddings for text conditioning.
+        
+        Args:
+            text: Text prompt
+            text_encoder: Text encoder
+            tokenizer: Tokenizer
+            device: Device to run the model on
+        """
+        
+        # TODO currently, hard-coding for stable diffusion
+        with torch.no_grad():
+
+            prompt = [text]
+            batch_size = len(prompt)
+            text_input = tokenizer(prompt, padding="max_length", max_length=tokenizer.model_max_length, truncation=True, return_tensors="pt")
+
+            text_embeddings = text_encoder(text_input.input_ids.to(device))[0].to(device)
+            max_length = text_input.input_ids.shape[-1]
+            # print(max_length, text_input.input_ids)
+            uncond_input = tokenizer(
+                [""] * batch_size, padding="max_length", max_length=max_length, return_tensors="pt"
+            )
+            uncond_embeddings = text_encoder(uncond_input.input_ids.to(device))[0].to(device)
+        
+        return text_embeddings, uncond_embeddings
+
     def inject_mhsa_style_features(self, content_features, style_features, gamma=0.75, T=1.5):
         """
         Inject style features into MHSA layers using StyleID technique.
@@ -916,34 +832,3 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             print(f"Error loading Stable Audio Open v1.0 pipeline: {e}")
             raise
         
-
-def example_usage():
-    """
-    Example usage of the StyleID Stable Audio Open v1.0 pipeline.
-    
-    Note: Stable Audio Open v1.0 doesn't support text conditioning, so the prompt
-    is kept for compatibility but not used in the actual generation.
-    """
-    # Load the pipeline
-    pipeline = StyleIDStableAudioOpenPipeline.load_checkpoint(
-        checkpoint="stabilityai/stable-audio-open-1.0",
-        device="cuda",
-        dtype=torch.float16
-    )
-    
-    # Perform style transfer
-    pipeline.styleid_diffuse(
-        content_audio_path="path/to/content_audio.wav",
-        style_audio_path="path/to/style_audio.wav", 
-        output_path="path/to/output_audio.wav",
-        prompt="A musical piece with style transfer",  # Kept for compatibility, not used
-        gamma=0.75,
-        T=1.5,
-        start_step=49,
-        num_inference_steps=50,
-        guidance_scale=7.5  # Kept for compatibility, not used
-    )
-
-
-if __name__ == "__main__":
-    example_usage()
