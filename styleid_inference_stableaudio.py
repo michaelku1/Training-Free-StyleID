@@ -87,7 +87,6 @@ class StyleIDStableAudioInference:
         # Load the model
         print(f"Loading StableAudio model from {model_path}...")
         print(f"Memory before loading: {get_memory_usage()[0]:.2f} GB allocated")
-
         
         # Load the StableAudio pipeline
         self.pipeline = StyleIDStableAudioOpenPipeline.load_checkpoint(
@@ -135,7 +134,6 @@ class StyleIDStableAudioInference:
         
         # Load audio using pydub
         audio_segment = pydub.AudioSegment.from_file(audio_path)
-        
         
         # For StableAudio, we need to convert audio to the format expected by the pipeline
         # This is a placeholder - the actual implementation depends on StableAudio's requirements
@@ -327,6 +325,14 @@ class StyleIDStableAudioInference:
             
             # Extract the generated latents from the result
             stylized_latents = result["latents"]
+
+            # save image
+            images = [self.pipeline._denormalize(input)[0] for input in result["images"]]
+            image_last = images[-1]
+            images = np.concatenate(images, axis=1)
+
+            # save image
+            image_last.save(output_path)
         
         generation_time = time.time() - start_time
         print(f"Generation completed in {generation_time:.2f} seconds")

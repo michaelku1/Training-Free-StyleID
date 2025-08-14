@@ -186,7 +186,7 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
     ):
         super().__init__()
 
-        # BUG 
+        # register modules to so they can used throughout class methods
         self.register_modules(
             audio_vae=audio_vae,
             text_encoder=text_encoder,
@@ -655,7 +655,7 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
 
             # NOTE Predict noise with StyleID injection
             noise_pred = self.diffusion_transformer(
-                latent_model_input, 
+                init_latents, 
                 t,
                 text_condition_embedding,
             ).sample
@@ -664,22 +664,20 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             unconditional_output, conditional_output = noise_pred.chunk(2)
             noise_pred = conditional_output + guidance_scale * (conditional_output - unconditional_output)
 
-
             # NOTE sampling: Compute previous noisy sample
-            latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
+            # latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
             # Standard DDIM step: move from t to t-1 (denoising)
-            prev_noisy_sample = scheduler.step(noisy_residual, t, input).prev_sample                # coef * P_t(e_t(x_t)) + D_t(e_t(x_t))
-            pred_original_sample = scheduler.step(noisy_residual, t, input).pred_original_sample    # D_t(e_t(x_t))
+            prev_noisy_sample = self.scheduler.step(noise_pred, t, init_latents).prev_sample                # coef * P_t(e_t(x_t)) + D_t(e_t(x_t))
+            pred_original_sample = self.scheduler.step(noise_pred, t, init_latents).pred_original_sample    # D_t(e_t(x_t))
             # update sample
-            input = prev_noisy_sample
-            
+            init_latents = prev_noisy_sample
             # save latents
             pred_latents.append(pred_original_sample)
             # save images (decoded latents)
-            pred_images.append(decode_latent(pred_original_sample, **decode_kwargs))
+            pred_images.append(self._decode_audio(pred_original_sample))
 
-        return dict(latents=latents)
+        return dict(latents=pred_latents[-1], images=pred_images[-1])
     
     def get_text_condition(self, text, device="cuda"):
         # NOTE if nothing is passed, use empty prompt
@@ -806,7 +804,6 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             audio_vae = get_vae_from_stable_audio_open_1_0()
             text_encoder = T5EncoderModel.from_pretrained(checkpoint, subfolder="text_encoder") # ok
             tokenizer = T5Tokenizer.from_pretrained(checkpoint, subfolder="tokenizer") # ok
-
             breakpoint()
             diffusion_transformer = DiffusionTransformer()
             scheduler = DDPMScheduler.from_pretrained(checkpoint, subfolder="scheduler")
