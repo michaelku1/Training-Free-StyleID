@@ -19,6 +19,7 @@ from huggingface_hub import hf_hub_download
 from PIL import Image
 from transformers import CLIPFeatureExtractor, CLIPTextModel, CLIPTokenizer
 
+
 from riffusion.datatypes import InferenceInput
 from riffusion.external.prompt_weighting import get_weighted_text_embeddings
 from riffusion.util import torch_util
@@ -381,6 +382,7 @@ class RiffusionPipeline(DiffusionPipeline):
         init_timestep = int(num_inference_steps * strength) + offset
         init_timestep = min(init_timestep, num_inference_steps)
 
+        # NOTE reversed time steps
         timesteps = self.scheduler.timesteps[-init_timestep]
         timesteps = torch.tensor(
             [timesteps] * batch_size * num_images_per_prompt, device=self.device

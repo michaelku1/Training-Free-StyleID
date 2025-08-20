@@ -8,8 +8,10 @@ import numpy as np
 from typing import Optional, Dict, Tuple, List
 from stableaudio.styleid_stable_audio_pipeline import StyleIDStableAudioOpenPipeline
 from PIL import Image
-from stableaudio.spectrogram_converter import SpectrogramConverter, SpectrogramParams
-from stableaudio.spectrogram_image_converter import SpectrogramImageConverter
+from pytorch_lightning import seed_everything
+
+from torchvision.utils import save_image
+
 
 # Import pydub for audio processing
 try:
@@ -109,50 +111,14 @@ class StyleIDStableAudioInference:
             if hasattr(self.pipeline.diffusion_transformer, 'enable_gradient_checkpointing'):
                 self.pipeline.diffusion_transformer.enable_gradient_checkpointing()
         
+        # NOTE stable audio vae works on raw audio
         # Initialize spectrogram converters
-        params = SpectrogramParams()
-        self.spectrogram_converter = SpectrogramConverter(params=params, device=self.device)
-        self.image_converter = SpectrogramImageConverter(params=params, device=self.device)
+        # params = SpectrogramParams()
+        # self.image_converter = SpectrogramImageConverter(params=params, device=self.device)
 
         print(f"Model loaded successfully on {self.device}")
         print(f"Memory after loading: {get_memory_usage()[0]:.2f} GB allocated")
-    
-    def audio_to_spectrogram(self, audio_path: str) -> Image.Image:
-        """
-        Convert audio file to spectrogram image.
-        
-        Args:
-            audio_path: Path to audio file
-            
-        Returns:
-            PIL Image of the spectrogram
-        """
-        print(f"Converting audio to spectrogram: {audio_path}")
-        
-        if pydub is None:
-            raise ImportError("pydub is required for audio processing. Install with: pip install pydub")
-        
-        # Load audio using pydub
-        audio_segment = pydub.AudioSegment.from_file(audio_path)
-        
-        # For StableAudio, we need to convert audio to the format expected by the pipeline
-        # This is a placeholder - the actual implementation depends on StableAudio's requirements
-        # Convert audio segment to numpy array
-        samples = audio_segment.get_array_of_samples()
-        if audio_segment.channels == 2:
-            # Convert stereo to mono
-            samples = samples[::2]
 
-        # Convert audio to spectrogram image
-        image = self.image_converter.spectrogram_image_from_audio(audio_segment)
-        
-        return image
-        
-
-        spec_data = np.random.rand(256, 512) * 255
-        image = Image.fromarray(spec_data.astype(np.uint8))
-        
-        return image
     
     def spectrogram_to_audio(self, spectrogram_image: Image.Image, output_path: str):
         """
@@ -236,13 +202,9 @@ class StyleIDStableAudioInference:
             content_audio_path: Path to content audio file
             style_audio_path: Path to style audio file
             output_path: Path to save output audio
-            prompt_start: Starting text prompt (kept for compatibility, not used by StableAudio)
-            prompt_end: Ending text prompt (kept for compatibility, not used by StableAudio)
-            alpha: Interpolation parameter (0-1)
+            prompt: Text prompt for generation
             num_inference_steps: Number of diffusion steps
             guidance_scale: Classifier-free guidance scale (kept for compatibility, not used by StableAudio)
-            denoising_strength: Denoising strength for img2img (kept for compatibility, not used by StableAudio)
-            seed: Random seed for generation
             
         Returns:
             PIL Image of the stylized spectrogram
@@ -256,18 +218,8 @@ class StyleIDStableAudioInference:
             allocated, reserved = get_memory_usage()
             print(f"Initial memory: {allocated:.2f} GB allocated, {reserved:.2f} GB reserved")
         
-        # Step 1: Convert audio to spectrograms
-        print("\nStep 1: Converting audio to spectrograms...")
-        content_image = self.audio_to_spectrogram(content_audio_path)
-        style_image = self.audio_to_spectrogram(style_audio_path)
-        
-        if self.enable_memory_optimization:
-            clear_memory()
-            allocated, reserved = get_memory_usage()
-            print(f"Memory after spectrogram conversion: {allocated:.2f} GB allocated")
-        
-        # Step 2: Extract features using DDIM inversion
-        print("\nStep 2: Extracting content features...")
+        # Step 1: Extract features using DDIM inversion
+        print("\nStep 1: Extracting content features...")
 
         # NOTE DDIM inversion for content
         content_latents, content_features = self.extract_features_ddim(
@@ -277,7 +229,7 @@ class StyleIDStableAudioInference:
         # Clear memory between extractions
         if self.enable_memory_optimization:
             clear_memory()
-            del content_latents  # Free memory immediately
+            # del content_latents  # Free memory immediately
         
         print("Extracting style features...")
 
@@ -291,11 +243,11 @@ class StyleIDStableAudioInference:
             clear_memory()
             del style_latents  # Free memory immediately
         
-        # Step 3: Prepare inference inputs
-        print("\nStep 3: Preparing inference parameters...")
+        # Step 2: Prepare inference inputs
+        print("\nStep 2: Preparing inference parameters...")
         
-        # Step 4: Perform StyleID-enhanced generation
-        print("\nStep 4: Performing StyleID-enhanced generation...")
+        # Step 3: Perform StyleID-enhanced generation
+        print("\nStep 3: Performing StyleID-enhanced generation...")
         start_time = time.time()
         
         if self.enable_memory_optimization:
@@ -315,6 +267,7 @@ class StyleIDStableAudioInference:
         # NOTE DDIM reverse process (Where style injection happens)
         with torch.no_grad():
             # NOTE pass text (str) and content-style latents (embeddings) to the pipeline
+            # only returns last latent and image (no intermediate latents)
             result = self.pipeline.styleid_generate(
                 prompt=prompt,
                 init_latents=latent_cs,
@@ -324,15 +277,7 @@ class StyleIDStableAudioInference:
             )
             
             # Extract the generated latents from the result
-            stylized_latents = result["latents"]
-
-            # save image
-            images = [self.pipeline._denormalize(input)[0] for input in result["images"]]
-            image_last = images[-1]
-            images = np.concatenate(images, axis=1)
-
-            # save image
-            image_last.save(output_path)
+            stylized_latents_last = result["latents"]
         
         generation_time = time.time() - start_time
         print(f"Generation completed in {generation_time:.2f} seconds")
@@ -343,27 +288,17 @@ class StyleIDStableAudioInference:
             allocated, reserved = get_memory_usage()
             print(f"Memory after generation: {allocated:.2f} GB allocated")
         
-        # Step 5: Convert back to audio
-        print("\nStep 5: Converting to audio...")
+        # Step 4: Convert back to audio
+        print("\nStep 4: Converting to audio...")
         
         # Convert latents to audio using the pipeline's decode method
-        if hasattr(self.pipeline, '_decode_audio'):
-            audio = self.pipeline._decode_audio(stylized_latents)
-            # Save audio using the pipeline's save method
-            if hasattr(self.pipeline, '_save_audio'):
-                self.pipeline._save_audio(audio, output_path)
-            else:
-                # Fallback: create a placeholder audio file
-                self.spectrogram_to_audio(content_image, output_path)  # Use content image as placeholder
-        else:
-            # Fallback: create a placeholder audio file
-            self.spectrogram_to_audio(content_image, output_path)
+        audio_waveform = self.pipeline._decode_audio(stylized_latents_last) # vae decode
+        self.pipeline._save_audio(audio_waveform, output_path)
         
         print(f"\nStyle transfer completed!")
         print(f"Output saved to: {output_path}")
         
-        # Return a placeholder image (in practice, this would be the generated spectrogram)
-        return content_image
+        return audio_waveform
     
     def batch_style_transfer(
         self,
@@ -458,18 +393,12 @@ def main():
                        help="Disable attention feature injection")
     
     # Generation parameters
-    parser.add_argument("--prompt_start", default="", 
-                       help="Starting text prompt (kept for compatibility, not used by StableAudio)")
-    parser.add_argument("--prompt_end", default="", 
-                       help="Ending text prompt (kept for compatibility, not used by StableAudio)")
-    parser.add_argument("--alpha", type=float, default=0.5, 
-                       help="Interpolation parameter (0-1)")
+    parser.add_argument("--prompt", default="", 
+                       help="Text prompt for generation")
     parser.add_argument("--num_inference_steps", type=int, default=50, 
                        help="Number of diffusion steps")
     parser.add_argument("--guidance_scale", type=float, default=7.5, 
                        help="Classifier-free guidance scale (kept for compatibility, not used by StableAudio)")
-    parser.add_argument("--denoising_strength", type=float, default=0.8, 
-                       help="Denoising strength for img2img (kept for compatibility, not used by StableAudio)")
     parser.add_argument("--seed", type=int, default=42, 
                        help="Random seed for generation")
     
@@ -503,15 +432,15 @@ def main():
     print(f"Disable memory optimization: {args.disable_memory_optimization}")
     print(f"Content audio: {args.content_audio}")
     print(f"Style audio: {args.style_audio}")
-    print(f"Prompt start: {args.prompt_start}")
-    print(f"Prompt end: {args.prompt_end}")
-    print(f"Alpha: {args.alpha}")
+    print(f"Prompt: {args.prompt}")
     print(f"Num inference steps: {args.num_inference_steps}")
     print(f"Guidance scale: {args.guidance_scale}")
-    print(f"Denoising strength: {args.denoising_strength}")
     print(f"Seed: {args.seed}")
     print(f"Output path: {args.output_path}")
     print('-' * 60)
+    
+    # Set seed
+    seed_everything(args.seed)
     
     # Initialize inference pipeline
     inference = StyleIDStableAudioInference(
@@ -531,27 +460,19 @@ def main():
             content_dir=args.content_dir,
             style_dir=args.style_dir,
             output_dir=args.output_dir,
-            prompt_start=args.prompt_start,
-            prompt_end=args.prompt_end,
-            alpha=args.alpha,
+            prompt=args.prompt,
             num_inference_steps=args.num_inference_steps,
             guidance_scale=args.guidance_scale,
-            denoising_strength=args.denoising_strength,
-            seed=args.seed
         )
     else:
         # Single file processing
-        inference.style_transfer(
+        audio_waveform = inference.style_transfer(
             content_audio_path=args.content_audio,
             style_audio_path=args.style_audio,
             output_path=args.output_path,
-            prompt_start=args.prompt_start,
-            prompt_end=args.prompt_end,
-            alpha=args.alpha,
+            prompt=args.prompt,
             num_inference_steps=args.num_inference_steps,
             guidance_scale=args.guidance_scale,
-            denoising_strength=args.denoising_strength,
-            seed=args.seed
         )
 
 

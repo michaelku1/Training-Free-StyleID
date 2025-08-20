@@ -41,3 +41,5 @@ python riffusion_activation_visualization.py \
     --num_inference_steps 30 \
     --seed 42
 
+# stable audio runs
+CUDA_VISIBLE_DEVICES=0 python styleid_inference_stableaudio.py     --content_audio /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav     --style_audio  /mnt/gestalt/home/mku666/musicTI_audios/timbre/accordion/accordion1.wav     --output_path ./results/piano_in_guitar_style.wav     --gamma 0.7     --T 1.3     --num_inference_steps 50

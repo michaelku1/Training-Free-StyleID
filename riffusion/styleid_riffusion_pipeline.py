@@ -497,6 +497,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             generator_start = torch.Generator(device=self.device).manual_seed(start.seed)
             generator_end = torch.Generator(device=self.device).manual_seed(end.seed)
 
+        # NOTE wtf is this?
         ############### Text encodings with interpolation ###############
         embed_start = self.embed_text_weighted(start.prompt)
         embed_end = self.embed_text_weighted(end.prompt)

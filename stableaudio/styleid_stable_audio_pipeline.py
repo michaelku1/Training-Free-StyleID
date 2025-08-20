@@ -27,6 +27,8 @@ from diffusers import DDPMScheduler
 # let python resolve relative import instead of global path
 from .test_vae_model_hf_v2 import get_vae_from_stable_audio_open_1_0
 
+import inspect
+
 device = "cuda" if torch.cuda.is_available() else "cpu"
 HF_ACCESS_TOKEN = open("hf_access_token", "r").read()
 
@@ -65,7 +67,6 @@ except Exception as e:
     raise Exception(f"Import error: {e}")
 
 
-
 # try:
 #     from stable_audio_open import (
 #         # StableAudioOpenPipeline,
@@ -78,7 +79,7 @@ except Exception as e:
 # except ImportError:
 #     print("Warning: stable_audio_open not available. Using stable-audio-tools as alternative.")
 #     STABLE_AUDIO_OPEN_AVAILABLE = False
-    
+
 # Use stable-audio-tools as the primary alternative
 if STABLE_AUDIO_TOOLS_AVAILABLE:
     # Create wrapper classes using stable-audio-tools
@@ -89,7 +90,6 @@ if STABLE_AUDIO_TOOLS_AVAILABLE:
             # Use stable-audio-tools model
             try:
                 model = get_pretrained_model("stabilityai/stable-audio-open-1.0")
-                # breakpoint()
                 # NOTE get the model from the wrapper
                 dit_wrapper = model[0].model # first argument is the model config, second is metadata
                 diffusion_transformer = dit_wrapper.model 
@@ -99,10 +99,13 @@ if STABLE_AUDIO_TOOLS_AVAILABLE:
             except Exception as e:
                 raise Exception(f"Could not load stable-audio-open model: {e}")
             
-        def forward(self, x, t):
+        def forward(self, x, t, text_cond=None):
             # Use stable-audio-tools model
             # return type('obj', (object,), {'sample': self.model(x, t)})()
-            return self.model(x, t)
+            # return self.model(x, t, context=text_cond)
+
+            # breakpoint()
+            return self.model(x, t, cross_attn_cond=text_cond)
 
     
 
@@ -161,6 +164,21 @@ def feat_merge(content_feats, style_feats, start_step=0, gamma=0.75, T=1.5):
     
     return merged_features
 
+class DiagonalGaussianDistribution:
+    """
+    Diagonal Gaussian distribution for latent sampling.
+    """
+    
+    def __init__(self, parameters):
+        self.mean, self.logvar = parameters.chunk(2, dim=1)
+        self.std = torch.exp(0.5 * self.logvar)
+
+    def sample(self):
+        noise = torch.randn_like(self.std)
+        return self.mean + self.std * noise
+
+    def mode(self):
+        return self.mean
 
 class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
     """
@@ -496,19 +514,26 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             self.idx_time_dict[t] = i
             self.time_idx_dict[i] = t
 
-        # Encode audio to latent using AudioVAE
-        if isinstance(audio, torch.Tensor):
-            device = audio.device  # Use the same device as input audio
-            audio_tensor = audio.to(device=device, dtype=self.audio_vae.dtype)
-        else:
-            # Convert audio to tensor format expected by AudioVAE
-            audio_tensor = self._preprocess_audio(audio)
+
+        # Convert audio to tensor format expected by AudioVAE
+        audio_tensor = self._preprocess_audio(audio, device)
+
+        # NOTE convert to stereo since stable-audio-open-1.0 is stereo
+        audio_tensor = torch.cat([audio_tensor, audio_tensor], dim=1)
         
-        # encode spectrogram to latent
-        init_latent_dist = self.audio_vae.encode(audio_tensor).latent_dist
-        init_latents = init_latent_dist.sample()
+        # BUG stable audio does not support latent_dist and sample()
+        # init_latent_dist = self.audio_vae.encode(audio_tensor).latent_dist
+        # init_latents = init_latent_dist.sample()
+
+        init_latents = self.audio_vae.encode(audio_tensor)
+
+        # BUG redundant code
+        # init_latent_dist = DiagonalGaussianDistribution(encoded_audio_tensor)
+        # init_latents = init_latent_dist.sample()
+
+        # NOTE comment out for now
         # AudioVAE might have different scaling factor than image VAE
-        init_latents = 0.18215 * init_latents  # scale latents
+        # init_latents = 0.18215 * init_latents  # scale latents
 
         # DDIM inversion with feature extraction - matching diffusers implementation
         latents = init_latents.clone()
@@ -517,16 +542,21 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         timesteps = list(reversed(self.scheduler.timesteps))
         num_inference_steps = len(self.scheduler.timesteps)
         cur_latent = latents.clone()
+        batch_size = cur_latent.shape[0]
 
         with torch.no_grad():
             for i in range(0, num_inference_steps):
                 t = timesteps[i]
+                t = t.expand(batch_size) # (bs)
+                t = t.to(cur_latent.device)
                 
                 # Set current timestep for attention hooks
                 self.cur_t = t.item() if hasattr(t, 'item') else t
-                
+
+
                 # Predict the noise residual
-                noise_pred = self.diffusion_transformer(cur_latent, t.to(cur_latent.device)).sample
+                noise_pred = self.diffusion_transformer(cur_latent, t, text_cond=None)
+
                 
                 # For text condition on stable diffusion
                 if noise_pred.shape[0] == 2:
@@ -537,8 +567,9 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
                     cur_latent, _ = cur_latent.chunk(2)
 
                 # DDIM inversion formula - matching diffusers implementation
-                current_t = max(0, t.item() - (1000//num_inference_steps))
-                next_t = t
+                current_t = torch.tensor(max(0, t.item() - (1000//num_inference_steps))).to(cur_latent.device)
+                next_t = torch.tensor(t.item()).to(cur_latent.device)
+
                 alpha_t = self.scheduler.alphas_cumprod[current_t]
                 alpha_t_next = self.scheduler.alphas_cumprod[next_t]
                 
@@ -552,7 +583,7 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         
         return cur_latent, None  # Return final latent and None for features (handled by hooks)
 
-    def _preprocess_audio(self, audio):
+    def _preprocess_audio(self, audio, device):
         """
         Preprocess audio for AudioVAE encoding.
         This method should be adapted based on the specific AudioVAE requirements.
@@ -573,12 +604,10 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             audio_tensor = audio_tensor.unsqueeze(0)  # Add batch dimension
         if audio_tensor.dim() == 2:
             audio_tensor = audio_tensor.unsqueeze(0)  # Add batch dimension
-            
-        # Use the device of the pipeline components
-        device = next(self.parameters()).device if hasattr(self, 'parameters') else torch.device('cpu')
-        return audio_tensor.to(device=device, dtype=self.audio_vae.dtype)
 
-    def _encode_text(self, prompt: str):
+        return audio_tensor.to(device=device)
+
+    def _encode_text(self, prompt: str, device="cuda"):
         """Encode text prompt using the text encoder."""
         inputs = self.tokenizer(
             prompt,
@@ -587,14 +616,14 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             truncation=True,
             return_tensors="pt",
         )
-        device = torch.device('cpu')  # Default to CPU for testing
-        text_embeddings = self.text_encoder(inputs.input_ids.to(device))[0]
+        text_embeddings = self.text_encoder(inputs.input_ids.to(device))[0].to(device)
         return text_embeddings
 
     def _decode_audio(self, latents):
         """Decode latents to audio using AudioVAE."""
-        latents = 1.0 / 0.18215 * latents  # Adjust scaling factor if needed
-        audio = self.audio_vae.decode(latents).sample
+        # NOTE will comment out this line for now, will see if it works without it
+        # latents = 1.0 / 0.18215 * latents  # Adjust scaling factor if needed
+        audio = self.audio_vae.decode(latents)
         return audio
 
     def _save_audio(self, audio, output_path):
@@ -602,6 +631,11 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         import soundfile as sf
         # Convert to numpy and save
         audio_np = audio.cpu().numpy()
+
+        # convert to mono and adapt to soundfile shape format
+        audio_np = audio_np.mean(axis=1)
+        audio_np = np.squeeze(audio_np, axis=0)
+
         sf.write(output_path, audio_np, samplerate=44100)  # Adjust sample rate as needed
 
     @torch.no_grad()
@@ -625,11 +659,13 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         guidance_scale, and negative_prompt are kept for compatibility but not used in the actual generation.
         """
 
-        pred_images = []
         pred_latents = []
 
         # Set timesteps
         self.scheduler.set_timesteps(num_inference_steps)
+
+        # NOTE force timesteps to be moved to the same device as latents
+        self.scheduler.timesteps = self.scheduler.timesteps.to(init_latents.device)
 
         # NOTE: text condition (conditional + unconditional text embeddings) on stable diffusion
         text_condition_embedding = self.get_text_condition(prompt, device=device)
@@ -640,12 +676,18 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
         if accepts_eta:
             extra_step_kwargs["eta"] = eta
 
+        # Ensure scheduler timesteps are on the correct device
         timesteps = self.scheduler.timesteps.to(device)
-
+        # breakpoint()
+        batch_size = init_latents.shape[0]
         # NOTE DDIM sampling (reverse process)
         for i, t in enumerate(self.progress_bar(timesteps)):
             # Set current timestep for attention hooks
             self.cur_t = t.item() if hasattr(t, 'item') else t
+            t = t.expand(batch_size) # (bs)
+
+            # breakpoint()
+            t = t.to(init_latents.device) # Move timestep to same device as latents
             
             # Skip injection before start_step
             if i < start_step:
@@ -653,12 +695,32 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             else:
                 self.trigger_modify_qkv = True
 
-            # NOTE Predict noise with StyleID injection
+            # NOTE DiT forward signature example:
+            """DiT forward signature:
+
+            forward(
+                hidden_states,              # the noisy VAE latents
+                timestep,                   # scalar or batch of timesteps
+                encoder_hidden_states=None, # text condition (B, L, D)
+                global_hidden_states=None,  # optional global conditioning (e.g. timing)
+                ...
+            )"""
+
+
+            # NOTE Predict noise with StyleID injection (with text condition)
+            # Ensure text condition tensors are on the same device as latents
+            text_condition_on_device = {}
+            for key, value in text_condition_embedding.items():
+                if isinstance(value, torch.Tensor):
+                    text_condition_on_device[key] = value.to(init_latents.device)
+                else:
+                    text_condition_on_device[key] = value
+            
             noise_pred = self.diffusion_transformer(
                 init_latents, 
                 t,
-                text_condition_embedding,
-            ).sample
+                **text_condition_on_device,
+            )
 
             # NOTE perform guidance on conditional and unconditional unet outputs
             unconditional_output, conditional_output = noise_pred.chunk(2)
@@ -668,30 +730,34 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             # latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
             # Standard DDIM step: move from t to t-1 (denoising)
-            prev_noisy_sample = self.scheduler.step(noise_pred, t, init_latents).prev_sample                # coef * P_t(e_t(x_t)) + D_t(e_t(x_t))
-            pred_original_sample = self.scheduler.step(noise_pred, t, init_latents).pred_original_sample    # D_t(e_t(x_t))
+            # Ensure all tensors are on the same device for scheduler step
+            t_for_scheduler = t.to(init_latents.device) if t.device != init_latents.device else t
+            prev_noisy_sample = self.scheduler.step(noise_pred, t_for_scheduler, init_latents).prev_sample                # coef * P_t(e_t(x_t)) + D_t(e_t(x_t))
+            pred_original_sample = self.scheduler.step(noise_pred, t_for_scheduler, init_latents).pred_original_sample    # D_t(e_t(x_t))
             # update sample
             init_latents = prev_noisy_sample
             # save latents
             pred_latents.append(pred_original_sample)
-            # save images (decoded latents)
-            pred_images.append(self._decode_audio(pred_original_sample))
 
-        return dict(latents=pred_latents[-1], images=pred_images[-1])
+            # pred_images.append(self._decode_audio(pred_original_sample))
+
+        return dict(latents=pred_latents[-1])
     
     def get_text_condition(self, text, device="cuda"):
         # NOTE if nothing is passed, use empty prompt
+        # NOTE text_cond is the keyword argument for the diffusion transformer wrapper,
+        # the actual keyword argument is called "cross_attn_cond"
         if text is None:
             uncond_input = self.tokenizer(
                 [""], padding="max_length", max_length=self.tokenizer.model_max_length, return_tensors="pt"
             )
             uncond_embeddings = self.text_encoder(uncond_input.input_ids.to(device))[0].to(device)
-            return {'encoder_hidden_states': uncond_embeddings}
+            return {'text_cond': uncond_embeddings}
         
-        text_embeddings, uncond_embeddings = self.get_text_embedding(text, self.text_encoder, self.tokenizer)
+        text_embeddings, uncond_embeddings = self.get_text_embedding(text, self.text_encoder, self.tokenizer, device)
         text_cond = [text_embeddings, uncond_embeddings]
         denoise_kwargs = {
-            'encoder_hidden_states': torch.cat(text_cond)
+            'text_cond': torch.cat(text_cond, dim=0)
         }
         return denoise_kwargs
     
@@ -797,19 +863,16 @@ class StyleIDStableAudioOpenPipeline(DiffusionPipeline):
             #     feature_extractor = base_pipeline.feature_extractor
             # else:
 
-            # Use real audio libraries as alternatives
             # BUG: this wrapper is not working, need to use the vae directly from the stable-audio-tools library
             # audio_vae = AutoencoderKL.from_pretrained("stabilityai/stable-audio-open-1.0", subfolder="vae")
-
+            
             audio_vae = get_vae_from_stable_audio_open_1_0()
             text_encoder = T5EncoderModel.from_pretrained(checkpoint, subfolder="text_encoder") # ok
             tokenizer = T5Tokenizer.from_pretrained(checkpoint, subfolder="tokenizer") # ok
-            breakpoint()
             diffusion_transformer = DiffusionTransformer()
-            scheduler = DDPMScheduler.from_pretrained(checkpoint, subfolder="scheduler")
-            # feature_extractor = AutoFeatureExtractor.from_pretrained("stabilityai/stable-audio-open-1.0") # ok
+            scheduler = DDPMScheduler.from_pretrained(checkpoint, subfolder="scheduler", device=device)
+            # feature_extractor = AutoFeatureExtractor.from_pretrained("stabilityai/stable-audio-open-1.0") # this line is not needed
             
-            # Create the StyleIDStableAudioOpenPipeline
             styleid_pipeline = cls(
                 audio_vae=audio_vae,
                 text_encoder=text_encoder,

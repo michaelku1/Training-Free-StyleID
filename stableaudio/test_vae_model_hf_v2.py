@@ -29,9 +29,10 @@ def get_vae_from_stable_audio_open_1_0():
 
     # Init just pre-trained VAE. Need config file that you can find at link below:
     # https://github.com/Stability-AI/stable-audio-tools/blob/main/stable_audio_tools/configs/model_configs/autoencoders/stable_audio_2_0_vae.json
-    stable_audio_vae_config_path = os.path.expanduser("~/.cache/huggingface/hub/models--stabilityai--stable-audio-open-1.0/snapshots/f21265c1e2710b3bd2386596943f0007f55f802e/model_config.json")
+    stable_audio_vae_config_path = os.path.expanduser("/home/mku666/riffusion-hobby/stableaudio/stable_audio_2_0_vae.json")
     vae = create_model_from_config(json.load(open(stable_audio_vae_config_path)))
 
+    # load model weights
     copy_state_dict(vae, load_ckpt_state_dict(vae_ckpt_path))
     vae.to('cuda').eval().requires_grad_(False)
 
