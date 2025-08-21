@@ -397,6 +397,8 @@ class RiffusionPipeline(DiffusionPipeline):
         )
         noise = torch_util.slerp(interpolate_alpha, noise_a, noise_b)
         init_latents_orig = init_latents
+
+        # NOTE add noise to latents
         init_latents = self.scheduler.add_noise(init_latents, noise, timesteps)
 
         # prepare extra kwargs for the scheduler step, since not all schedulers have the same args

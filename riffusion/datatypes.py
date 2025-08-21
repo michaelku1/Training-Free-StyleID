@@ -41,7 +41,7 @@ class InferenceInput:
     start: PromptInput
 
     # End point of interpolation
-    end: PromptInput
+    # end: PromptInput
 
     # Interpolation alpha [0, 1]. A value of 0 uses start fully, a value of 1
     # uses end fully.

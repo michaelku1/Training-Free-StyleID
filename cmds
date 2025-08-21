@@ -22,6 +22,12 @@ curl -X POST http://127.0.0.1:8080/run_inference/ \
     "seed_image_id": "og_beat"
   }'
 
+# dataset paths
+/mnt/gestalt/home/ytsrt/EGDB-Large-Subset
+
+/mnt/gestalt/home/ytsrt/reaMIXed
+
+
 # run styleid inference on vocal to EGDB
 CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /mnt/gestalt/home/mku666/wah_emulation/EGDB_DI/233.wav --style_audio /mnt/gestalt/home/mku666/vocal2guitar/vocals/233_sinsy.wav --output_path ./output.wav --prompt_start "" --prompt_end ""
 

@@ -485,23 +485,25 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         
         alpha = inputs.alpha
         start = inputs.start
-        end = inputs.end
+        # end = inputs.end
 
-        guidance_scale = start.guidance * (1.0 - alpha) + end.guidance * alpha
+        # guidance_scale = start.guidance * (1.0 - alpha) + end.guidance * alphas
+        guidance_scale = start.guidance
 
         # Setup generators
         if self.device.lower().startswith("mps"):
             generator_start = torch.Generator(device="cpu").manual_seed(start.seed)
-            generator_end = torch.Generator(device="cpu").manual_seed(end.seed)
+            # generator_end = torch.Generator(device="cpu").manual_seed(end.seed)
         else:
             generator_start = torch.Generator(device=self.device).manual_seed(start.seed)
-            generator_end = torch.Generator(device=self.device).manual_seed(end.seed)
+            # generator_end = torch.Generator(device=self.device).manual_seed(end.seed)
 
         # NOTE wtf is this?
         ############### Text encodings with interpolation ###############
-        embed_start = self.embed_text_weighted(start.prompt)
-        embed_end = self.embed_text_weighted(end.prompt)
-        text_embedding = embed_start + alpha * (embed_end - embed_start)
+        # embed_start = self.embed_text_weighted(start.prompt)
+        # embed_end = self.embed_text_weighted(end.prompt)
+        # text_embedding = embed_start + alpha * (embed_end - embed_start)
+        text_embedding = self.embed_text_weighted(start.prompt)
 
         # Setup feature extraction hooks
         self.setup_feature_extraction()
@@ -577,10 +579,10 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             text_embeddings=text_embedding,
             init_latents=init_latents,
             generator_a=generator_start,
-            generator_b=generator_end,
-            interpolate_alpha=alpha,
+            # generator_b=generator_end,
+            # interpolate_alpha=alpha,
             strength_a=start.denoising,
-            strength_b=end.denoising,
+            # strength_b=end.denoising,
             num_inference_steps=inputs.num_inference_steps,
             guidance_scale=guidance_scale,
             start_step=start_step,
@@ -594,11 +596,11 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         text_embeddings: torch.Tensor,
         init_latents: torch.Tensor,
         generator_a: torch.Generator,
-        generator_b: torch.Generator,
-        interpolate_alpha: float,
+        # generator_b: torch.Generator,
+        # interpolate_alpha: float,
         mask: T.Optional[torch.Tensor] = None,
         strength_a: float = 0.8,
-        strength_b: float = 0.8,
+        # strength_b: float = 0.8,
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
         negative_prompt: T.Optional[T.Union[str, T.List[str]]] = None,
@@ -648,7 +650,8 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             text_embeddings = torch.cat([uncond_embeddings, text_embeddings])
 
         latents_dtype = text_embeddings.dtype
-        strength = (1 - interpolate_alpha) * strength_a + interpolate_alpha * strength_b
+        # strength = (1 - interpolate_alpha) * strength_a + interpolate_alpha * strength_b
+        strength = strength_a
 
         # Get initial timestep
         offset = self.scheduler.config.get("steps_offset", 0)
@@ -665,12 +668,12 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         noise_a = torch.randn(
             init_latents.shape, generator=generator_a, device=self.device, dtype=latents_dtype
         )
-        noise_b = torch.randn(
-            init_latents.shape, generator=generator_b, device=self.device, dtype=latents_dtype
-        )
-        noise = torch_util.slerp(interpolate_alpha, noise_a, noise_b)
+        # noise_b = torch.randn(
+        #     init_latents.shape, generator=generator_b, device=self.device, dtype=latents_dtype
+        # )
+        # noise = torch_util.slerp(interpolate_alpha, noise_a, noise_b)
         init_latents_orig = init_latents
-        init_latents = self.scheduler.add_noise(init_latents, noise, timesteps)
+        init_latents = self.scheduler.add_noise(init_latents, noise_a, timesteps)
 
         # Prepare extra kwargs for scheduler
         accepts_eta = "eta" in set(inspect.signature(self.scheduler.step).parameters.keys())
@@ -719,7 +722,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             # Apply mask if provided
             if mask is not None:
                 init_latents_proper = self.scheduler.add_noise(
-                    init_latents_orig, noise, torch.tensor([t])
+                    init_latents_orig, noise_a, torch.tensor([t])
                 )
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
@@ -838,6 +841,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                 # feature_extractor=feature_extractor,
             )
             
+            # breakpoint()
 
             # Move to device
             styleid_pipeline = styleid_pipeline.to(device)
