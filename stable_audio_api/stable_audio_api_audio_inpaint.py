@@ -7,10 +7,10 @@ response = requests.post(
         "accept": "audio/*"
     },
     files={
-        "audio": open("./uk-bass-base.mp3", "rb"),
+        "audio": open("./sample_data/accordion/accordion1.wav", "rb"),
     },
     data={
-        "prompt": "inpaint audio to 8 seconds.",
+        "prompt": "inpaint audio to 8 seconds without changing the content, style, rhythm and other characteristics.",
         "output_format": "mp3",
         "duration": 20,
         "steps": 30,

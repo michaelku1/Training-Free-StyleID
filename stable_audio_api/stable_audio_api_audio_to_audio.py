@@ -4,7 +4,7 @@ response = requests.post(
     f"https://api.stability.ai/v2beta/audio/stable-audio-2/audio-to-audio",
     headers={"authorization": f"Bearer sk-MYAPIKEY", "accept": "audio/*"},
     files={
-        "audio": open("/home/mku666/riffusion-hobby/stable_audio_api/sample_data/accordion/accordion1.wav", "rb"),
+        "audio": open("./stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/1.wav", "rb"),
     },
     data={
         # "prompt": "A song in the 3/4 time signature that features cheerful acoustic guitar, live recorded drums, and rhythmic claps, The mood is happy and up-lifting.",

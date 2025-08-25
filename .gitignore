@@ -3,6 +3,12 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+stable_audio_api/sample_data/
+stable_audio_api/output/
+
+riffusion/seed_images/
+riffusion/mask_processed.png
+
 integrations/
 
 seed_images/

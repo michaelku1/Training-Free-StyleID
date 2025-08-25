@@ -37,7 +37,8 @@ logging.getLogger().addHandler(logging.FileHandler("server.log"))
 PIPELINE: T.Optional[RiffusionPipeline] = None
 
 # Where built-in seed images are stored
-SEED_IMAGES_DIR = Path(Path(__file__).resolve().parent.parent, "seed_images")
+# SEED_IMAGES_DIR = Path(Path(__file__).resolve().parent.parent, "seed_images")
+SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/seed_images"
 
 
 def run_app(
@@ -135,12 +136,17 @@ def compute_request(
     # Load the seed image by ID
     init_image_path = Path(seed_images_dir, f"{inputs.seed_image_id}.png")
 
+    print("######################### input image path: ", init_image_path)
+
     if not init_image_path.is_file():
         return f"Invalid seed image: {inputs.seed_image_id}", 400
     init_image = PIL.Image.open(str(init_image_path)).convert("RGB")
 
     # Load the mask image by ID
     mask_image: T.Optional[PIL.Image.Image] = None
+
+    # NOTE pass mask image here
+    # mask_image = PIL.Image.open("...png").convert("RGB")
     if inputs.mask_image_id:
         mask_image_path = Path(seed_images_dir, f"{inputs.mask_image_id}.png")
         if not mask_image_path.is_file():

@@ -206,7 +206,7 @@ class StyleIDStableAudioInference:
             num_inference_steps: Number of diffusion steps
             guidance_scale: Classifier-free guidance scale (kept for compatibility, not used by StableAudio)
             
-        Returns:
+        Returns:    
             PIL Image of the stylized spectrogram
         """
         print("=" * 60)

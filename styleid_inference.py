@@ -91,7 +91,8 @@ class StyleIDRiffusionInference:
             'start_step': 49,   # Starting step for feature injection
             'use_adain_init': True,
             'use_attn_injection': True,
-            'injection_layers': [6, 7, 8, 9, 10, 11]  # Attention layers for injection
+            'injection_layers': [6, 7, 8, 9, 10, 11],  # Attention layers for injection
+            'attention_op_type': '1'
         }
         if styleid_params:
             self.styleid_params.update(styleid_params)
@@ -214,7 +215,8 @@ class StyleIDRiffusionInference:
         num_inference_steps: int = 50,
         guidance_scale: float = 7.5,
         denoising_strength: float = 0.8,
-        seed: int = 42
+        seed: int = 42,
+        attention_op_type: str = '1'
     ) -> Image.Image:
         """
         Perform StyleID-enhanced audio style transfer with memory optimization.
@@ -315,7 +317,8 @@ class StyleIDRiffusionInference:
                 use_attn_injection=self.styleid_params['use_attn_injection'],
                 gamma=self.styleid_params['gamma'],
                 T=self.styleid_params['T'],
-                start_step=self.styleid_params['start_step']
+                start_step=self.styleid_params['start_step'],
+                attention_op_type=attention_op_type
             )
         
         generation_time = time.time() - start_time
@@ -327,7 +330,6 @@ class StyleIDRiffusionInference:
             allocated, reserved = get_memory_usage()
             print(f"Memory after generation: {allocated:.2f} GB allocated")
         
-
 
         # Step 5: Convert back to audio
         print("\nStep 5: Converting to audio...")
@@ -429,7 +431,8 @@ def main():
                        help="Disable AdaIN initialization")
     parser.add_argument("--no_attn_injection", action="store_true", 
                        help="Disable attention feature injection")
-    
+    parser.add_argument("--attention_op_type", type=str, default='1', 
+                       help="Attention op type")
     # Generation parameters
     parser.add_argument("--prompt_start", default="", 
                        help="Starting text prompt")
@@ -484,6 +487,7 @@ def main():
     print(f"Guidance scale: {args.guidance_scale}")
     print(f"Denoising strength: {args.denoising_strength}")
     print(f"Seed: {args.seed}")
+    print(f"Attention op type: {args.attention_op_type}")
     print(f"Output path: {args.output_path}")
     print('-' * 60)
     
@@ -511,7 +515,8 @@ def main():
             num_inference_steps=args.num_inference_steps,
             guidance_scale=args.guidance_scale,
             denoising_strength=args.denoising_strength,
-            seed=args.seed
+            seed=args.seed,
+            attention_op_type=args.attention_op_type
         )
     else:
         # Single file processing
@@ -525,7 +530,8 @@ def main():
             num_inference_steps=args.num_inference_steps,
             guidance_scale=args.guidance_scale,
             denoising_strength=args.denoising_strength,
-            seed=args.seed
+            seed=args.seed,
+            attention_op_type=args.attention_op_type
         )
 
 

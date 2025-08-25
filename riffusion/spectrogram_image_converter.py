@@ -102,3 +102,35 @@ class SpectrogramImageConverter:
         )
 
         return segment
+
+
+if __name__ == "__main__":
+    try:
+        from riffusion.spectrogram_converter import SpectrogramConverter
+        from riffusion.spectrogram_params import SpectrogramParams
+        from riffusion.util import image_util
+
+    except ImportError:
+        print("Using local files")
+        from spectrogram_converter import SpectrogramConverter
+        from spectrogram_params import SpectrogramParams
+        from util import image_util
+
+
+    style_names = ["Chopper", "Easy Blues", "First Compression", "Gravity", "Light House", "Moore Clean", "New Guitar Icon", "Rhapsody", "Room 808"]
+
+    for style_name in style_names:
+        # load audio
+        audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/{style_name}/DI_1/1.wav"
+        audio_segment = pydub.AudioSegment.from_file(audio_path)
+
+        # initialize spectrogram image converter
+        params = SpectrogramParams()
+        image_converter = SpectrogramImageConverter(params=params, device="cuda")
+
+        # convert audio to spectrogram image
+        image = image_converter.spectrogram_image_from_audio(audio_segment)
+
+        # save image 
+        image.save(f"./riffusion/test_spec_images/{style_name}_egdb_1_spectrogram_image.png")
+    

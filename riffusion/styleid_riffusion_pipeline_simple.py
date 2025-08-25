@@ -125,7 +125,8 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         self.T = 1.5      # Temperature scaling parameter (tau in diffusers)
         self.attn_layers = [7, 8, 9, 10, 11]  # Attention layers for injection (matching run_styleid_diffusers)
         self.start_step = 49  # Starting step for feature injection
-        
+        self.attention_scaling = 1.0  # Attention scaling parameter for style injection
+
         # Feature storage - matching diffusers implementation
         self.attn_features = {}  # where to save key value (attention block feature)
         self.attn_features_modify = {}  # where to save key value to modify (attention block feature)
@@ -185,7 +186,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         Adapted to match the diffusers implementation."""
         self.attention_hooks = []  # Store hooks for cleanup
         
-        # Get UNet layers like in diffusers implementation
+        # Get UNet decoder layers like in diffusers implementation
         resnet, attn = self._get_unet_layers(self.unet)
         
         # Register hooks on specified attention layers - matching diffusers implementation
@@ -242,6 +243,18 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         """Hook function to inject modified Q, K, V into attention modules.
         Adapted to match the diffusers implementation exactly."""
         def hook(model, input, output):
+            """
+            input:
+                model: UNet2DConditionModel
+                input:
+                    hidden_states: torch.Tensor
+                    t: torch.Tensor
+                    encoder_hidden_states: torch.Tensor
+                    attention_mask: torch.Tensor
+                output:
+                    output: torch.Tensor
+            """
+
             if self.trigger_modify_qkv:
                 # Get current features
                 _, q_cs, k_cs, v_cs, _ = self._attention_op(model, input[0])
@@ -255,15 +268,17 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                     current_batch_size = q_cs.shape[0]
                     stored_batch_size = q_c.shape[0]
                     
+                    # Repeat stored features to match current batch size
                     if current_batch_size != stored_batch_size:
-                        # Repeat stored features to match current batch size
                         repeat_factor = current_batch_size // stored_batch_size
                         q_c = q_c.repeat(repeat_factor, 1, 1)
                         k_s = k_s.repeat(repeat_factor, 1, 1)
                         v_s = v_s.repeat(repeat_factor, 1, 1)
                     
-                    # Style injection - matching diffusers implementation exactly
+                    # NOTE Style injection - matching diffusers implementation exactly
+                    # query preservation
                     q_hat_cs = q_c * self.gamma + q_cs * (1 - self.gamma)
+                    # k, v copies
                     k_cs, v_cs = k_s, v_s
                     
                     # Replace using attention_op like in diffusers
@@ -293,6 +308,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             up_block_idx = idx // 3
             layer_idx = idx % 3
             
+            # NOTE get decoder blocks
             resnet_layers.append(getattr(unet, 'up_blocks')[up_block_idx].resnets[layer_idx])
             if up_block_idx > 0:
                 attn_layers.append(getattr(unet, 'up_blocks')[up_block_idx].attentions[layer_idx])
@@ -302,10 +318,13 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         print(f"Found {len(attn_layers)} attention layers using diffusers method")
         return resnet_layers, attn_layers
     
+    # NOTE attention op is for self attention 
     def _attention_op(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0):
         """
         Attention operation to get query, key, value and attention map from the UNet.
         Adapted to match the diffusers implementation exactly.
+
+        temperature is applied before softmax
         """
         residual = hidden_states
         
@@ -349,13 +368,14 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             key, value = key[:query.shape[0]], value[:query.shape[0]]
 
         # apply temperature scaling
-        query = query * temperature
+        query = query * temperature # same as applying it on qk matrix
 
         if attention_probs is None:
             attention_probs = attn.get_attention_scores(query, key, attention_mask)
 
         batch_heads, img_len, txt_len = attention_probs.shape
         
+        # 
         hidden_states = torch.bmm(attention_probs, value)
         hidden_states = attn.batch_to_head_dim(hidden_states)
 
@@ -375,6 +395,154 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         
         return attention_probs, query, key, value, hidden_states
     
+    def _attention_op_output_scores_interp(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0, guidance_scores=None):
+        """
+        Attention operation to get score outputs from the UNet.
+        """
+
+        residual = hidden_states
+        
+        if hasattr(attn, 'spatial_norm') and attn.spatial_norm is not None:
+            hidden_states = attn.spatial_norm(hidden_states, None)  # temb not available here
+
+        input_ndim = hidden_states.ndim
+
+        if input_ndim == 4:
+            batch_size, channel, height, width = hidden_states.shape
+            hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
+
+        batch_size, sequence_length, _ = (
+            hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        )
+        
+        if hasattr(attn, 'prepare_attention_mask'):
+            attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+
+        if hasattr(attn, 'group_norm') and attn.group_norm is not None:
+            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
+
+        if query is None:
+            query = attn.to_q(hidden_states)
+            query = attn.head_to_batch_dim(query)
+
+        if encoder_hidden_states is None:
+            encoder_hidden_states = hidden_states
+        elif hasattr(attn, 'norm_cross') and attn.norm_cross:
+            encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
+
+        if key is None:
+            key = attn.to_k(encoder_hidden_states)
+            key = attn.head_to_batch_dim(key)
+        if value is None:
+            value = attn.to_v(encoder_hidden_states)
+            value = attn.head_to_batch_dim(value)
+
+        # Ensure key and value have the same batch size as query
+        if key.shape[0] != query.shape[0]:
+            key, value = key[:query.shape[0]], value[:query.shape[0]]
+
+        # apply temperature scaling
+        query = query * temperature # same as applying it on qk matrix
+
+        if attention_probs is None:
+            attention_probs = attn.get_attention_scores(query, key, attention_mask)
+
+        batch_heads, img_len, txt_len = attention_probs.shape
+        
+        # 
+        hidden_states = torch.bmm(attention_probs, value)
+        hidden_states = attn.batch_to_head_dim(hidden_states)
+
+        # linear proj
+        hidden_states = attn.to_out[0](hidden_states)
+        # dropout
+        hidden_states = attn.to_out[1](hidden_states)
+
+        if input_ndim == 4:
+            hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
+
+        if hasattr(attn, 'residual_connection') and attn.residual_connection:
+            hidden_states = hidden_states + residual
+
+        if hasattr(attn, 'rescale_output_factor'):
+            hidden_states = hidden_states / attn.rescale_output_factor
+        
+        return attention_probs, query, key, value, hidden_states
+
+    def _attention_op_residual_outputs(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0):
+        """
+        Attention operation to get query, key, value and attention map from the UNet.
+        """
+        residual = hidden_states
+        
+        if hasattr(attn, 'spatial_norm') and attn.spatial_norm is not None:
+            hidden_states = attn.spatial_norm(hidden_states, None)  # temb not available here
+
+        input_ndim = hidden_states.ndim
+
+        if input_ndim == 4:
+            batch_size, channel, height, width = hidden_states.shape
+            hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
+
+        batch_size, sequence_length, _ = (
+            hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        )
+        
+        if hasattr(attn, 'prepare_attention_mask'):
+            attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+
+        if hasattr(attn, 'group_norm') and attn.group_norm is not None:
+            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
+
+        if query is None:
+            query = attn.to_q(hidden_states)
+            query = attn.head_to_batch_dim(query)
+
+        if encoder_hidden_states is None:
+            encoder_hidden_states = hidden_states
+        elif hasattr(attn, 'norm_cross') and attn.norm_cross:
+            encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
+
+        if key is None:
+            key = attn.to_k(encoder_hidden_states)
+            key = attn.head_to_batch_dim(key)
+        if value is None:
+            value = attn.to_v(encoder_hidden_states)
+            value = attn.head_to_batch_dim(value)
+
+        # Ensure key and value have the same batch size as query
+        if key.shape[0] != query.shape[0]:
+            key, value = key[:query.shape[0]], value[:query.shape[0]]
+
+        # apply temperature scaling
+        query = query * temperature # same as applying it on qk matrix
+
+        # q*k^T (where softmax is applied)
+        if attention_probs is None:
+            attention_probs = attn.get_attention_scores(query, key, attention_mask)
+
+        batch_heads, img_len, txt_len = attention_probs.shape
+        
+        # k*v^T 
+        hidden_states = torch.bmm(attention_probs, value)
+        hidden_states = attn.batch_to_head_dim(hidden_states)
+
+        # linear proj
+        hidden_states = attn.to_out[0](hidden_states)
+        # dropout
+        hidden_states = attn.to_out[1](hidden_states)
+
+        if input_ndim == 4:
+            hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
+
+        if hasattr(attn, 'residual_connection') and attn.residual_connection:
+            hidden_states = hidden_states + residual
+
+        if hasattr(attn, 'rescale_output_factor'):
+            hidden_states = hidden_states / attn.rescale_output_factor
+        
+        return attention_probs, query, key, value, hidden_states
+
     # NOTE DDIM inversion - adapted to match diffusers implementation
     def extract_features_ddim(self, image, num_steps=50, save_feature_steps=50):
         """
@@ -850,7 +1018,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                 styleid_pipeline.unet.to(memory_format=torch.channels_last)
 
             return styleid_pipeline
-            
+
         except Exception as e:
             print(f"Error loading components individually: {e}")
             # Fallback to the original method
@@ -896,7 +1064,7 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
     image_torch = torch.from_numpy(image_np)
     return 2.0 * image_torch - 1.0
 
-
+# mask not used here
 def preprocess_mask(mask: Image.Image, scale_factor: int = 8) -> torch.Tensor:
     """
     Preprocess a mask for the model.

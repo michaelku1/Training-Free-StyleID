@@ -30,7 +30,7 @@ class PromptInput:
 
 
 @dataclass(frozen=True)
-class InferenceInput:
+class InferenceInputSimple:
     """
     Parameters for a single run of the riffusion model, interpolating between
     a start and end set of PromptInputs. This is the API required for a request
@@ -42,6 +42,33 @@ class InferenceInput:
 
     # End point of interpolation
     # end: PromptInput
+
+    # Interpolation alpha [0, 1]. A value of 0 uses start fully, a value of 1
+    # uses end fully.
+    alpha: float
+
+    # Number of inner loops of the diffusion model
+    num_inference_steps: int = 50
+
+    # Which seed image to use
+    seed_image_id: str = "og_beat"
+
+    # ID of mask image to use
+    mask_image_id: T.Optional[str] = None
+
+@dataclass(frozen=True)
+class InferenceInput:
+    """
+    Parameters for a single run of the riffusion model, interpolating between
+    a start and end set of PromptInputs. This is the API required for a request
+    to the model server.
+    """
+
+    # Start point of interpolation
+    start: PromptInput
+
+    # End point of interpolation
+    end: PromptInput
 
     # Interpolation alpha [0, 1]. A value of 0 uses start fully, a value of 1
     # uses end fully.

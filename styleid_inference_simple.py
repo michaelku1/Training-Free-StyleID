@@ -92,6 +92,7 @@ class StyleIDRiffusionInference:
             'use_adain_init': True,
             'use_attn_injection': True,
             'injection_layers': [6, 7, 8, 9, 10, 11]  # Attention layers for injection
+            # 'attention_scaling': 1.0  # Attention scaling parameter for style injection
         }
         if styleid_params:
             self.styleid_params.update(styleid_params)

@@ -286,10 +286,14 @@ class RiffusionPipeline(DiffusionPipeline):
         mask: T.Optional[torch.Tensor] = None
         if mask_image:
             vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+            # rescale mask dimensions corresponding to vae dims
             mask = preprocess_mask(mask_image, scale_factor=vae_scale_factor).to(
                 device=self.device, dtype=embed_start.dtype
             )
-
+        # 
+        print("######################### save preprocessed mask: ", mask)
+        mask.save("/home/mku666/riffusion-hobby/riffusion/mask_processed.png")
+            
         outputs = self.interpolate_img2img(
             text_embeddings=text_embedding,
             init_latents=init_latents,
@@ -396,6 +400,8 @@ class RiffusionPipeline(DiffusionPipeline):
             init_latents.shape, generator=generator_b, device=self.device, dtype=latents_dtype
         )
         noise = torch_util.slerp(interpolate_alpha, noise_a, noise_b)
+        
+        # NOTE this is the vae encoded image (haven't added noise yet)
         init_latents_orig = init_latents
 
         # NOTE add noise to latents
@@ -448,6 +454,7 @@ class RiffusionPipeline(DiffusionPipeline):
                     init_latents_orig, noise, torch.tensor([t])
                 )
                 # import ipdb; ipdb.set_trace()
+                # NOTE where img2img interpolation happens
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
         # NOTE performs vae decoding
@@ -489,7 +496,7 @@ def preprocess_mask(mask: Image.Image, scale_factor: int = 8) -> torch.Tensor:
     # Resize to integer multiple of 32
     w, h = mask.size
     w, h = map(lambda x: x - x % 32, (w, h))
-    mask = mask.resize((w // scale_factor, h // scale_factor), resample=Image.NEAREST)
+    mask = mask.resize((w // scale_factor, h // scale_factor), resample=Image.Resampling.NEAREST)
 
     # Convert to numpy array and rescale
     mask_np = np.array(mask).astype(np.float32) / 255.0
@@ -499,6 +506,10 @@ def preprocess_mask(mask: Image.Image, scale_factor: int = 8) -> torch.Tensor:
     mask_np = mask_np[None].transpose(0, 1, 2, 3)  # what does this step do?
 
     # Invert to repaint white and keep black
-    mask_np = 1 - mask_np  # repaint white, keep black
+    mask_np = 1 - mask_np  # repaint white, keep black (keyword: keep black)
 
     return torch.from_numpy(mask_np)
+
+
+def save_mask(mask: torch.Tensor, path: str):
+    pass

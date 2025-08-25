@@ -108,6 +108,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         unet: UNet2DConditionModel,
         scheduler: T.Union[DDIMScheduler, PNDMScheduler, LMSDiscreteScheduler],
         safety_checker: StableDiffusionSafetyChecker,
+        attention_op_type: str = '1',
         # feature_extractor: CLIPFeatureExtractor, # NOTE coming from huggingface transformers
     ):
         super().__init__(
@@ -136,6 +137,19 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         
         # Current timestep tracking
         self.cur_t = None
+
+        # TODO add different attention op types
+        self.attention_op_type = attention_op_type
+
+        if attention_op_type == '1':
+            self._attention_op = self._attention_op_embeddings
+        elif attention_op_type == '2':
+            self._attention_op = self._attention_op_output_scores_interp
+        elif attention_op_type == '3':
+            self._attention_op = self._attention_op_residual_outputs
+        else:
+            raise ValueError(f"Invalid attention op type: {attention_op_type}")
+
 
     def setup_feature_extraction(self):
         """Setup hooks for extracting attention features during DDIM inversion.
@@ -238,11 +252,16 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
             return output
         return hook
     
+    # TODO interpolate between content and style attention outputs using a guidance scale
     def _modify_self_attn_qkv(self, name):
         """Hook function to inject modified Q, K, V into attention modules.
         Adapted to match the diffusers implementation exactly."""
         def hook(model, input, output):
             if self.trigger_modify_qkv:
+                # TODO 
+                # 1. get current modified outputs (hidden states) 
+                # 2. get stored features for modification (also hidden states, may have to modify the
+                # self.attn_features_modify dict store to store the returned hidden states)
                 # Get current features
                 _, q_cs, k_cs, v_cs, _ = self._attention_op(model, input[0])
                 
@@ -262,8 +281,12 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                         k_s = k_s.repeat(repeat_factor, 1, 1)
                         v_s = v_s.repeat(repeat_factor, 1, 1)
                     
-                    # Style injection - matching diffusers implementation exactly
+                    # query preservation
                     q_hat_cs = q_c * self.gamma + q_cs * (1 - self.gamma)
+
+                    # NOTE k,v copied from style
+                    # TODO  "A Training-Free Approach for Music Style Transfer with Latent Diffusion Models"
+                    # uses a scaling factor between style and content attention outputs
                     k_cs, v_cs = k_s, v_s
                     
                     # Replace using attention_op like in diffusers
@@ -302,7 +325,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         print(f"Found {len(attn_layers)} attention layers using diffusers method")
         return resnet_layers, attn_layers
     
-    def _attention_op(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0):
+    def _attention_op_embeddings(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0):
         """
         Attention operation to get query, key, value and attention map from the UNet.
         Adapted to match the diffusers implementation exactly.
@@ -375,6 +398,155 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         
         return attention_probs, query, key, value, hidden_states
     
+    def _attention_op_output_outputs_interp(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0, guidance_scores=None):
+        """
+        Attention operation to get score outputs from the UNet.
+        """
+
+        residual = hidden_states
+        
+        if hasattr(attn, 'spatial_norm') and attn.spatial_norm is not None:
+            hidden_states = attn.spatial_norm(hidden_states, None)  # temb not available here
+
+        input_ndim = hidden_states.ndim
+
+        if input_ndim == 4:
+            batch_size, channel, height, width = hidden_states.shape
+            hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
+
+        batch_size, sequence_length, _ = (
+            hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        )
+        
+        if hasattr(attn, 'prepare_attention_mask'):
+            attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+
+        if hasattr(attn, 'group_norm') and attn.group_norm is not None:
+            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
+
+        if query is None:
+            query = attn.to_q(hidden_states)
+            query = attn.head_to_batch_dim(query)
+
+        if encoder_hidden_states is None:
+            encoder_hidden_states = hidden_states
+        elif hasattr(attn, 'norm_cross') and attn.norm_cross:
+            encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
+
+        if key is None:
+            key = attn.to_k(encoder_hidden_states)
+            key = attn.head_to_batch_dim(key)
+        if value is None:
+            value = attn.to_v(encoder_hidden_states)
+            value = attn.head_to_batch_dim(value)
+
+        # Ensure key and value have the same batch size as query
+        if key.shape[0] != query.shape[0]:
+            key, value = key[:query.shape[0]], value[:query.shape[0]]
+
+        # NOTE scaling query
+        query = query * temperature # same as applying it on qk matrix
+
+        if attention_probs is None:
+            attention_probs = attn.get_attention_scores(query, key, attention_mask)
+
+        batch_heads, img_len, txt_len = attention_probs.shape
+        
+        # 
+        hidden_states = torch.bmm(attention_probs, value)
+        hidden_states = attn.batch_to_head_dim(hidden_states)
+
+        # linear proj
+        hidden_states = attn.to_out[0](hidden_states)
+        # dropout
+        hidden_states = attn.to_out[1](hidden_states)
+
+        if input_ndim == 4:
+            hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
+
+        if hasattr(attn, 'residual_connection') and attn.residual_connection:
+            hidden_states = hidden_states + residual
+
+        if hasattr(attn, 'rescale_output_factor'):
+            hidden_states = hidden_states / attn.rescale_output_factor
+
+        
+        return attention_probs, query, key, value, hidden_states
+
+    def _attention_op_residual_outputs(self, attn, hidden_states, encoder_hidden_states=None, attention_mask=None, query=None, key=None, value=None, attention_probs=None, temperature=1.0):
+        """
+        Attention operation to get query, key, value and attention map from the UNet.
+        """
+        residual = hidden_states
+        
+        if hasattr(attn, 'spatial_norm') and attn.spatial_norm is not None:
+            hidden_states = attn.spatial_norm(hidden_states, None)  # temb not available here
+
+        input_ndim = hidden_states.ndim
+
+        if input_ndim == 4:
+            batch_size, channel, height, width = hidden_states.shape
+            hidden_states = hidden_states.view(batch_size, channel, height * width).transpose(1, 2)
+
+        batch_size, sequence_length, _ = (
+            hidden_states.shape if encoder_hidden_states is None else encoder_hidden_states.shape
+        )
+        
+        if hasattr(attn, 'prepare_attention_mask'):
+            attention_mask = attn.prepare_attention_mask(attention_mask, sequence_length, batch_size)
+
+        if hasattr(attn, 'group_norm') and attn.group_norm is not None:
+            hidden_states = attn.group_norm(hidden_states.transpose(1, 2)).transpose(1, 2)
+
+        if query is None:
+            query = attn.to_q(hidden_states)
+            query = attn.head_to_batch_dim(query)
+
+        if encoder_hidden_states is None:
+            encoder_hidden_states = hidden_states
+        elif hasattr(attn, 'norm_cross') and attn.norm_cross:
+            encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
+
+        if key is None:
+            key = attn.to_k(encoder_hidden_states)
+            key = attn.head_to_batch_dim(key)
+        if value is None:
+            value = attn.to_v(encoder_hidden_states)
+            value = attn.head_to_batch_dim(value)
+
+        # Ensure key and value have the same batch size as query
+        if key.shape[0] != query.shape[0]:
+            key, value = key[:query.shape[0]], value[:query.shape[0]]
+
+        # apply temperature scaling
+        query = query * temperature # same as applying it on qk matrix
+
+        # q*k^T (where softmax is applied)
+        if attention_probs is None:
+            attention_probs = attn.get_attention_scores(query, key, attention_mask)
+
+        batch_heads, img_len, txt_len = attention_probs.shape
+        
+        # k*v^T 
+        hidden_states = torch.bmm(attention_probs, value)
+        hidden_states = attn.batch_to_head_dim(hidden_states)
+
+        # linear proj
+        hidden_states = attn.to_out[0](hidden_states)
+        # dropout
+        hidden_states = attn.to_out[1](hidden_states)
+
+        if input_ndim == 4:
+            hidden_states = hidden_states.transpose(-1, -2).reshape(batch_size, channel, height, width)
+
+        if hasattr(attn, 'residual_connection') and attn.residual_connection:
+            hidden_states = hidden_states + residual
+
+        if hasattr(attn, 'rescale_output_factor'):
+            hidden_states = hidden_states / attn.rescale_output_factor
+        
+        return attention_probs, query, key, value, hidden_states
+
     # NOTE DDIM inversion - adapted to match diffusers implementation
     def extract_features_ddim(self, image, num_steps=50, save_feature_steps=50):
         """
@@ -464,6 +636,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         gamma: float = 0.75,
         T: float = 1.5,
         start_step: int = 49,
+        attention_op_type: str = "1"
     ) -> Image.Image:
         """
         StyleID-enhanced riffusion inference for spectrogram style transfer.
