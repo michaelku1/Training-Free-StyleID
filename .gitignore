@@ -8,6 +8,8 @@ stable_audio_api/output/
 
 riffusion/seed_images/
 riffusion/mask_processed.png
+riffusion/debug_mel_spectrogram/
+riffusion/egdb_1_spec_images/
 
 integrations/
 
