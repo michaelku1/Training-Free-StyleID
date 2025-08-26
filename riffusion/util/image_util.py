@@ -7,7 +7,7 @@ import typing as T
 import numpy as np
 from PIL import Image
 
-from riffusion.spectrogram_params import SpectrogramParams
+# from riffusion.spectrogram_params import SpectrogramParams
 
 
 def image_from_spectrogram(spectrogram: np.ndarray, power: float = 0.25) -> Image.Image:
@@ -111,6 +111,14 @@ def spectrogram_from_image(
 
 
 def exif_from_image(pil_image: Image.Image) -> T.Dict[str, T.Any]:
+
+    try:
+        from riffusion.spectrogram_params import SpectrogramParams
+
+    except ImportError:
+        print("Using local files")
+        from spectrogram_params import SpectrogramParams
+
     """
     Get the EXIF data from a PIL image as a dict.
     """

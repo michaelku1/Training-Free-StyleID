@@ -21,7 +21,7 @@ import copy
 import time
 import gc
 
-from riffusion.datatypes import InferenceInput, PromptInput
+from riffusion.datatypes import InferenceInputSimple, PromptInput
 from riffusion.spectrogram_converter import SpectrogramConverter
 from riffusion.spectrogram_image_converter import SpectrogramImageConverter
 from riffusion.spectrogram_params import SpectrogramParams
@@ -29,6 +29,7 @@ from riffusion.util import torch_util
 
 # StyleID imports
 from riffusion.styleid_riffusion_pipeline_simple import StyleIDRiffusionPipeline
+
 
 
 def clear_memory():
@@ -247,6 +248,8 @@ class StyleIDRiffusionInference:
         # Step 1: Convert audio to spectrograms
         print("\nStep 1: Converting audio to spectrograms...")
         content_image = self.audio_to_spectrogram(content_audio_path)
+        breakpoint()
+
         style_image = self.audio_to_spectrogram(style_audio_path)
         
         if self.enable_memory_optimization:
@@ -281,7 +284,7 @@ class StyleIDRiffusionInference:
         
         # Step 3: Prepare inference inputs
         print("\nStep 3: Preparing inference parameters...")
-        inputs = InferenceInput(
+        inputs = InferenceInputSimple(
             alpha=alpha,
             num_inference_steps=num_inference_steps,
             start=PromptInput(

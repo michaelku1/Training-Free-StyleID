@@ -2,25 +2,7 @@
 python -m riffusion.server --host 127.0.0.1 --port 8080
 
 # run riffusion inference
-curl -X POST http://127.0.0.1:8080/run_inference/ \
-  -H "Content-Type: application/json" \
-  -d '{
-    "start": {
-      "prompt": "",
-      "seed": 42,
-      "denoising": 0.75,
-      "guidance": 7.0
-    },
-    "end": {
-      "prompt": "",
-      "seed": 123,
-      "denoising": 0.75,
-      "guidance": 7.0
-    },
-    "alpha": 0.5,
-    "num_inference_steps": 50,
-    "seed_image_id": "og_beat"
-  }'
+curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.75,"guidance":7.0},"end":{"prompt":"","seed":123,"denoising":0.75,"guidance":7.0},"alpha":0.5,"num_inference_steps":50,"seed_image_id":"mask_beat_lines_80"}'
 
 # dataset paths
 /mnt/gestalt/home/ytsrt/EGDB-Large-Subset

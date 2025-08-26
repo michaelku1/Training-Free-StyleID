@@ -142,7 +142,6 @@ class StyleIDRiffusionInference:
         # Load audio using pydub
         import pydub
         audio_segment = pydub.AudioSegment.from_file(audio_path)
-
         
         # Convert audio to spectrogram image
         image = self.image_converter.spectrogram_image_from_audio(audio_segment)
@@ -245,6 +244,7 @@ class StyleIDRiffusionInference:
             allocated, reserved = get_memory_usage()
             print(f"Initial memory: {allocated:.2f} GB allocated, {reserved:.2f} GB reserved")
         
+
         # Step 1: Convert audio to spectrograms
         print("\nStep 1: Converting audio to spectrograms...")
         content_image = self.audio_to_spectrogram(content_audio_path)

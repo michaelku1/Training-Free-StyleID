@@ -1,11 +1,17 @@
 import numpy as np
 import pydub
 from PIL import Image
-import torchaudio
 
-from riffusion.spectrogram_converter import SpectrogramConverter
-from riffusion.spectrogram_params import SpectrogramParams
-from riffusion.util import image_util
+try:
+    from riffusion.spectrogram_converter import SpectrogramConverter
+    from riffusion.spectrogram_params import SpectrogramParams
+    from riffusion.util import image_util
+
+except ImportError:
+    print("Using local files")
+    from spectrogram_converter import SpectrogramConverter
+    from spectrogram_params import SpectrogramParams
+    from util import image_util
 
 
 class SpectrogramImageConverter:
@@ -17,6 +23,7 @@ class SpectrogramImageConverter:
     """
 
     def __init__(self, params: SpectrogramParams, device: str = "cuda"):
+        
         self.p = params
         self.device = device
         self.converter = SpectrogramConverter(params=params, device=device)
@@ -105,19 +112,8 @@ class SpectrogramImageConverter:
 
 
 if __name__ == "__main__":
-    try:
-        from riffusion.spectrogram_converter import SpectrogramConverter
-        from riffusion.spectrogram_params import SpectrogramParams
-        from riffusion.util import image_util
-
-    except ImportError:
-        print("Using local files")
-        from spectrogram_converter import SpectrogramConverter
-        from spectrogram_params import SpectrogramParams
-        from util import image_util
-
-
-    style_names = ["Chopper", "Easy Blues", "First Compression", "Gravity", "Light House", "Moore Clean", "New Guitar Icon", "Rhapsody", "Room 808"]
+    # style_names = ["Chopper", "Easy Blues", "First Compression", "Gravity", "Light House", "Moore Clean", "New Guitar Icon", "Rhapsody", "Room 808"]
+    style_names = ["Chopper"]
 
     for style_name in style_names:
         # load audio
@@ -131,6 +127,11 @@ if __name__ == "__main__":
         # convert audio to spectrogram image
         image = image_converter.spectrogram_image_from_audio(audio_segment)
 
+        # NOTE convert to numpy array
+        image_array = np.array(image)
+        print(image_array.shape)
+        breakpoint()
+        
         # save image 
-        image.save(f"./riffusion/test_spec_images/{style_name}_egdb_1_spectrogram_image.png")
+        # image.save(f"./riffusion/test_spec_images/{style_name}_egdb_1_spectrogram_image.png")
     

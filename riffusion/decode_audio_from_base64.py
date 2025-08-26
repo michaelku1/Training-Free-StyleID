@@ -65,4 +65,4 @@ def decode_audio_from_json(json_file_path, output_wav_path):
 
 if __name__ == "__main__":
     # Decode the response.json file
-    decode_audio_from_json('response.json', 'output_audio.wav') 
+    decode_audio_from_json('response.json', '/home/mku666/riffusion-hobby/results/riffusion_test/output_audio.wav') 

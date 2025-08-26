@@ -5,8 +5,14 @@ import pydub
 import torch
 import torchaudio
 
-from riffusion.spectrogram_params import SpectrogramParams
-from riffusion.util import audio_util, torch_util
+try:
+    from riffusion.spectrogram_params import SpectrogramParams
+    from riffusion.util import audio_util, torch_util
+
+except ImportError:
+    print("Using local files")
+    from spectrogram_params import SpectrogramParams
+    from util import audio_util, torch_util
 
 
 class SpectrogramConverter:
@@ -30,6 +36,7 @@ class SpectrogramConverter:
 
     For more information, see https://pytorch.org/audio/stable/transforms.html
     """
+
 
     def __init__(self, params: SpectrogramParams, device: str = "cuda"):
         self.p = params

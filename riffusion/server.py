@@ -38,7 +38,8 @@ PIPELINE: T.Optional[RiffusionPipeline] = None
 
 # Where built-in seed images are stored
 # SEED_IMAGES_DIR = Path(Path(__file__).resolve().parent.parent, "seed_images")
-SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/seed_images"
+# SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/seed_images"
+SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/egdb_1_spec_images"
 
 
 def run_app(
@@ -108,6 +109,7 @@ def run_inference():
         logging.info(json_data)
         return str(exception), 400
 
+    # NOTE
     response = compute_request(
         inputs=inputs,
         seed_images_dir=SEED_IMAGES_DIR,
@@ -171,6 +173,7 @@ def compute_request(
     # Use CPU for audio processing to avoid CUDA solver issues
     converter = SpectrogramImageConverter(params=params, device="cpu")
 
+    # NOTE 轉回 audio signal
     segment = converter.audio_from_spectrogram_image(
         image,
         apply_filters=True,

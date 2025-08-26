@@ -283,6 +283,7 @@ class RiffusionPipeline(DiffusionPipeline):
         init_latents = 0.18215 * init_latents
 
         # Prepare mask latent
+        # NOTE you can define your own mask here, but as a tensor
         mask: T.Optional[torch.Tensor] = None
         if mask_image:
             vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
@@ -290,9 +291,9 @@ class RiffusionPipeline(DiffusionPipeline):
             mask = preprocess_mask(mask_image, scale_factor=vae_scale_factor).to(
                 device=self.device, dtype=embed_start.dtype
             )
-        # 
-        print("######################### save preprocessed mask: ", mask)
-        mask.save("/home/mku666/riffusion-hobby/riffusion/mask_processed.png")
+
+        # print("######################### save preprocessed mask: ", mask)
+        # mask.save("/home/mku666/riffusion-hobby/riffusion/mask_processed.png")
             
         outputs = self.interpolate_img2img(
             text_embeddings=text_embedding,
@@ -453,8 +454,9 @@ class RiffusionPipeline(DiffusionPipeline):
                 init_latents_proper = self.scheduler.add_noise(
                     init_latents_orig, noise, torch.tensor([t])
                 )
-                # import ipdb; ipdb.set_trace()
-                # NOTE where img2img interpolation happens
+
+                # NOTE where img2img interpolation happens (blending between masked latent and current sampled latents)
+                # NOTE 這邊到底在幹麻，如果是要inject style的話，為什麼要用這個mask的方式來做
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
         # NOTE performs vae decoding
