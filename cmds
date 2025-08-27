@@ -15,8 +15,10 @@ python3 decode_audio_from_base64.py --json_file_path   --output_wav_path ../resu
 
 /mnt/gestalt/home/ytsrt/reaMIXed
 
-# run styleid inference on vocal to EGDB
-CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /mnt/gestalt/home/mku666/wah_emulation/EGDB_DI/233.wav --style_audio /mnt/gestalt/home/mku666/vocal2guitar/vocals/233_sinsy.wav --output_path ./output.wav --prompt_start "" --prompt_end ""
+# run styleid inference on EGDB content and tone transfer
+CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --conte
+nt_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/1.wav --style_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav --output_path ./egdb_di_1_chopper_style_output.wav --prompt_
+start "" --prompt_end ""
 
 # run styleid inference on MusicTI dataset
 CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav --style_audio /mnt/gestalt/home/mku666/musicTI_audios/timbre/accordion/accordion1.wav --output_path ./results/musicTI_piano_accordion_test.wav --prompt_start "" --prompt_end ""

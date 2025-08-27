@@ -113,11 +113,32 @@ class SpectrogramImageConverter:
 
 if __name__ == "__main__":
     # style_names = ["Chopper", "Easy Blues", "First Compression", "Gravity", "Light House", "Moore Clean", "New Guitar Icon", "Rhapsody", "Room 808"]
-    style_names = ["Chopper"]
+    # style_names = ["Chopper"]
 
-    for style_name in style_names:
+    # for style_name in style_names:
         # load audio
-        audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/{style_name}/DI_1/1.wav"
+        # audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/{style_name}/DI_1/1.wav"
+        # audio_segment = pydub.AudioSegment.from_file(audio_path)
+
+        # # initialize spectrogram image converter
+        # params = SpectrogramParams()
+        # image_converter = SpectrogramImageConverter(params=params, device="cuda")
+
+        # # convert audio to spectrogram image
+        # image = image_converter.spectrogram_image_from_audio(audio_segment)
+
+        # # NOTE convert to numpy array
+        # image_array = np.array(image)
+        # print(image_array.shape)
+        
+        # save image 
+        # image.save(f"./riffusion/test_spec_images/{style_name}_egdb_1_spectrogram_image.png")
+    
+    audio_clip_names = ["1", "2", "3"]
+
+    for audio_clip_name in audio_clip_names:
+        # NOTE egdb DI images
+        audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/{audio_clip_name}.wav"
         audio_segment = pydub.AudioSegment.from_file(audio_path)
 
         # initialize spectrogram image converter
@@ -129,9 +150,12 @@ if __name__ == "__main__":
 
         # NOTE convert to numpy array
         image_array = np.array(image)
-        print(image_array.shape)
-        breakpoint()
+
+        # save image
+        image.save(f"./egdb_DI_1_spec_images/{audio_clip_name}.png")
         
-        # save image 
-        # image.save(f"./riffusion/test_spec_images/{style_name}_egdb_1_spectrogram_image.png")
-    
+        
+        
+        
+        
+        

@@ -440,11 +440,11 @@ def main():
                        help="Ending text prompt")
     parser.add_argument("--alpha", type=float, default=0.5, 
                        help="Interpolation parameter (0-1)")
-    parser.add_argument("--num_inference_steps", type=int, default=50, 
+    parser.add_argument("--num_inference_steps", type=int, default=200, 
                        help="Number of diffusion steps")
-    parser.add_argument("--guidance_scale", type=float, default=7.5, 
+    parser.add_argument("--guidance_scale", type=float, default=0, 
                        help="Classifier-free guidance scale")
-    parser.add_argument("--denoising_strength", type=float, default=0.8, 
+    parser.add_argument("--denoising_strength", type=float, default=0, 
                        help="Denoising strength for img2img")
     parser.add_argument("--seed", type=int, default=42, 
                        help="Random seed for generation")

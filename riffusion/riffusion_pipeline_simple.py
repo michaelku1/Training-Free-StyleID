@@ -27,7 +27,7 @@ from riffusion.util import torch_util
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
 
 
-class RiffusionPipeline(DiffusionPipeline):
+class RiffusionPipelineSimple(DiffusionPipeline):
     """
     Diffusers pipeline for doing a controlled img2img interpolation for audio generation.
 
@@ -74,7 +74,7 @@ class RiffusionPipeline(DiffusionPipeline):
         local_files_only: bool = False,
         low_cpu_mem_usage: bool = False,
         cache_dir: T.Optional[str] = None,
-    ) -> RiffusionPipeline:
+    ) -> RiffusionPipelineSimple:
         """
         Load the riffusion model pipeline.
 

@@ -25,7 +25,7 @@ from riffusion.datatypes import InferenceInput, InferenceOutput
 
 # NOTE riffusion pipeline with only one input (no interpolation)
 # from riffusion.datatypes import InferenceInputSimple, InferenceOutput
-# from riffusion.riffusion_pipeline_simple import RiffusionPipeline
+# from riffusion.riffusion_pipeline_simple import RiffusionPipelineSimple
 
 
 from riffusion.spectrogram_image_converter import SpectrogramImageConverter
@@ -47,6 +47,7 @@ PIPELINE: T.Optional[RiffusionPipeline] = None
 # SEED_IMAGES_DIR = Path(Path(__file__).resolve().parent.parent, "seed_images")
 # SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/seed_images"
 SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/egdb_1_spec_images"
+# SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/egdb_DI_1_spec_images"
 OUTPUT_DIR = "/home/mku666/riffusion-hobby/results/riffusion_test"
 
 def run_app(
