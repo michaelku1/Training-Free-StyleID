@@ -1,5 +1,5 @@
 """
-Flask server that serves the riffusion model as an API.
+debug script for riffusion pipeline
 """
 
 import dataclasses
@@ -11,30 +11,24 @@ import typing as T
 from pathlib import Path
 
 import dacite
-import flask
 import PIL
 import torch
-from flask_cors import CORS
 
 # Fix CUDA linear algebra backend to avoid cusolver errors
 torch.backends.cuda.preferred_linalg_library('magma')
 
 # NOTE original riffusion pipeline
-from riffusion.riffusion_pipeline import RiffusionPipeline
-from riffusion.datatypes import InferenceInput, InferenceOutput
+# from riffusion.riffusion_pipeline import RiffusionPipeline
+# from riffusion.datatypes import InferenceInput, InferenceOutput
 
 # NOTE riffusion pipeline with only one input (no interpolation)
-# from riffusion.datatypes import InferenceInputSimple, InferenceOutput
-# from riffusion.riffusion_pipeline_simple import RiffusionPipeline
+from riffusion.datatypes import InferenceInputSimple, InferenceOutput
+from riffusion.riffusion_pipeline_simple import RiffusionPipeline
 
 
 from riffusion.spectrogram_image_converter import SpectrogramImageConverter
 from riffusion.spectrogram_params import SpectrogramParams
 from riffusion.util import base64_util
-
-# Flask app with CORS
-app = flask.Flask(__name__)
-CORS(app)
 
 # Log at the INFO level to both stdout and disk
 logging.basicConfig(level=logging.INFO)
@@ -49,88 +43,8 @@ PIPELINE: T.Optional[RiffusionPipeline] = None
 SEED_IMAGES_DIR = "/home/mku666/riffusion-hobby/riffusion/egdb_1_spec_images"
 OUTPUT_DIR = "/home/mku666/riffusion-hobby/results/riffusion_test"
 
-def run_app(
-    *,
-    checkpoint: str = "riffusion/riffusion-model-v1",
-    no_traced_unet: bool = False,
-    device: str = "cuda",
-    host: str = "127.0.0.1",
-    port: int = 3013,
-    debug: bool = False,
-    ssl_certificate: T.Optional[str] = None,
-    ssl_key: T.Optional[str] = None,
-):
-    """
-    Run a flask API that serves the given riffusion model checkpoint.
-    """
-    # Initialize the model
-    global PIPELINE
-
-    PIPELINE = RiffusionPipeline.load_checkpoint(
-        checkpoint=checkpoint,
-        use_traced_unet=True,
-        device=device,
-    )
-    
-
-    args = dict(
-        debug=debug,
-        threaded=False,
-        host=host,
-        port=port,
-    )
-
-    if ssl_certificate:
-        assert ssl_key is not None
-        args["ssl_context"] = (ssl_certificate, ssl_key)
-
-    app.run(**args)  # type: ignore
-
-
-@app.route("/run_inference/", methods=["POST"])
-def run_inference():
-    """
-    Execute the riffusion model as an API.
-
-    Inputs:
-        Serialized JSON of the InferenceInput dataclass
-
-    Returns:
-        Serialized JSON of the InferenceOutput dataclass
-    """
-    start_time = time.time()
-
-    # Parse the payload as JSON
-    json_data = json.loads(flask.request.data)
-
-    # Log the request
-    logging.info(json_data)
-
-    # Parse an InferenceInput dataclass from the payload
-    try:
-        inputs = dacite.from_dict(InferenceInput, json_data)
-    except dacite.exceptions.WrongTypeError as exception:
-        logging.info(json_data)
-        return str(exception), 400
-    except dacite.exceptions.MissingValueError as exception:
-        logging.info(json_data)
-        return str(exception), 400
-
-    # NOTE
-    response = compute_request(
-        inputs=inputs,
-        seed_images_dir=SEED_IMAGES_DIR,
-        pipeline=PIPELINE,
-    )
-
-    # Log the total time
-    logging.info(f"Request took {time.time() - start_time:.2f} s")
-
-    return response
-
-
-def compute_request(
-    inputs: InferenceInput,
+def compute_request_test(
+    inputs: InferenceInputSimple,
     pipeline: RiffusionPipeline,
     seed_images_dir: str,
 ) -> T.Union[str, T.Tuple[str, int]]:
@@ -214,11 +128,23 @@ def compute_request(
         json.dump(dataclasses.asdict(output), f, indent=2, ensure_ascii=False)
 
     return
-    # return json.dumps(dataclasses.asdict(output), ensure_ascii=False)
-
-
 
 if __name__ == "__main__":
-    import argh
+    # Load the model
+    pipeline = RiffusionPipeline.load_checkpoint(
+        checkpoint="riffusion/riffusion-model-v1",
+        use_traced_unet=True,
+        device="cuda",
+    )
 
-    argh.dispatch_command(run_app)
+    # Load the seed image
+    seed_images_dir = "/home/mku666/riffusion-hobby/riffusion/egdb_1_spec_images"
+
+    compute_request_test(
+        inputs=InferenceInputSimple(
+            seed_image_id="Chopper_egdb_1_spectrogram_image",
+            mask_image_id=None,
+        ),
+        pipeline=pipeline,
+        seed_images_dir=seed_images_dir,
+    )

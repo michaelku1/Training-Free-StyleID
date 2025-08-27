@@ -49,12 +49,14 @@ def decode_audio_from_json(json_file_path, output_wav_path):
                 image_base64 = image_base64.replace('data:image/jpeg;base64,', '')
             
             image_binary = base64.b64decode(image_base64)
-            image_path = output_wav_path.replace('.wav', '_spectrogram.jpg')
+
+            # NOTE save the generated output audio spectrogram image
+            # image_path = output_wav_path.replace('.wav', '_spectrogram.jpg')
             
-            with open(image_path, 'wb') as f:
-                f.write(image_binary)
+            # with open(image_path, 'wb') as f:
+            #     f.write(image_binary)
             
-            print(f"Spectrogram saved as: {image_path}")
+            # print(f"Spectrogram saved as: {image_path}")
         
         # Print duration
         duration = data.get('duration_s', 0)
@@ -64,5 +66,14 @@ def decode_audio_from_json(json_file_path, output_wav_path):
         print(f"Error decoding audio: {e}")
 
 if __name__ == "__main__":
+
+    import argparse
+
+    parser = argparse.ArgumentParser(description='Decode audio from JSON response and save as WAV file')
+    # parser.add_argument('--image_path', type=str, required=True, help='Path to the image file') #???
+    parser.add_argument('--json_file_path', type=str, required=True, help='Path to the JSON file containing the API response')
+    parser.add_argument('--output_wav_path', type=str, required=True, help='Path where to save the WAV file')
+    args = parser.parse_args()
+
     # Decode the response.json file
-    decode_audio_from_json('response.json', '/home/mku666/riffusion-hobby/results/riffusion_test/output_audio.wav') 
+    decode_audio_from_json(args.json_file_path, args.output_wav_path) 

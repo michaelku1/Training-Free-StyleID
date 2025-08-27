@@ -45,7 +45,7 @@ class InferenceInputSimple:
 
     # Interpolation alpha [0, 1]. A value of 0 uses start fully, a value of 1
     # uses end fully.
-    alpha: float
+    # alpha: float
 
     # Number of inner loops of the diffusion model
     num_inference_steps: int = 50

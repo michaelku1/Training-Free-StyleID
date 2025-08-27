@@ -1061,7 +1061,6 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
 
     image_np = np.array(image).astype(np.float32) / 255.0
 
-    breakpoint()
     image_np = image_np[None].transpose(0, 3, 1, 2)
 
     image_torch = torch.from_numpy(image_np)
