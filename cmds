@@ -16,15 +16,16 @@ python3 decode_audio_from_base64.py --json_file_path   --output_wav_path ../resu
 /mnt/gestalt/home/ytsrt/reaMIXed
 
 # run styleid inference on EGDB content and tone transfer
-CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --conte
-nt_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/1.wav --style_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav --output_path ./egdb_di_1_chopper_style_output.wav --prompt_
-start "" --prompt_end ""
+CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/1.wav --style_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav --output_path ./egdb_di_1_chopper_style_output.wav --prompt_start "" --prompt_end ""
 
 # run styleid inference on MusicTI dataset
-CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav --style_audio /mnt/gestalt/home/mku666/musicTI_audios/timbre/accordion/accordion1.wav --output_path ./results/musicTI_piano_accordion_test.wav --prompt_start "" --prompt_end ""
+CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav --style_audio /mnt/gestalt/home/mku666/musicTI_audios/timbre/accordion/accordion1.wav --output_path ./piano_to_accordion_style_output.wav --prompt_start "" --prompt_end "" --start_step 200 --no_adain_init --attention_op_type 1
 
 # visualize patch embedding overlaying on attention heatmap of riffusion
 CUDA_VISIBLE_DEVICES=1 python3 riffusion_heatmap_patch_visualiztion.py --audio_path /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav --time_step 5 --attention_layer 6 --query_token 33 --num_inference_steps 30
+
+# plot spectrogram
+python3 spectrogram_plot.py --style_path /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav --content_path /mnt/gestalt/home/mku666/musicTI_audios/timbre/accordion/accordion1.wav --output_path /home/mku666/riffusion-hobby/piano_to_accordion_style_output.wav
 
 # visualize attention heatmap of riffusion
 python riffusion_activation_visualization.py \

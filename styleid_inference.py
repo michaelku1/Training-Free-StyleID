@@ -127,13 +127,13 @@ class StyleIDRiffusionInference:
         print(f"Model loaded successfully on {self.device}")
         print(f"Memory after loading: {get_memory_usage()[0]:.2f} GB allocated")
     
-    def audio_to_spectrogram(self, audio_path: str) -> Image.Image:
+    def audio_to_spectrogram(self, audio_path: str, sample_length: int = 7) -> Image.Image:
         """
         Convert audio file to spectrogram image.
         
         Args:
             audio_path: Path to audio file
-            
+            sample_length: Length of the audio sample to convert to spectrogram (in seconds)
         Returns:
             PIL Image of the spectrogram
         """
@@ -141,7 +141,15 @@ class StyleIDRiffusionInference:
         
         # Load audio using pydub
         import pydub
+        # pudub audio length uses milliseconds (e.g so 18151 means 18.151 seconds)
         audio_segment = pydub.AudioSegment.from_file(audio_path)
+        sample_rate = audio_segment.frame_rate
+
+        sample_length = sample_length * 1000
+
+        # NOTE trim audio to sample_length seconds
+        audio_segment = audio_segment[:sample_length]
+
         
         # Convert audio to spectrogram image
         image = self.image_converter.spectrogram_image_from_audio(audio_segment)
@@ -425,7 +433,7 @@ def main():
                        help="Query preservation parameter (0-1)")
     parser.add_argument("--T", type=float, default=1.5, 
                        help="Temperature scaling parameter")
-    parser.add_argument("--start_step", type=int, default=49, 
+    parser.add_argument("--start_step", type=int, default=200, 
                        help="Starting step for feature injection")
     parser.add_argument("--no_adain_init", action="store_true", 
                        help="Disable AdaIN initialization")
@@ -438,13 +446,13 @@ def main():
                        help="Starting text prompt")
     parser.add_argument("--prompt_end", default="", 
                        help="Ending text prompt")
-    parser.add_argument("--alpha", type=float, default=0.5, 
+    parser.add_argument("--alpha", type=float, default=0, 
                        help="Interpolation parameter (0-1)")
     parser.add_argument("--num_inference_steps", type=int, default=200, 
                        help="Number of diffusion steps")
     parser.add_argument("--guidance_scale", type=float, default=0, 
                        help="Classifier-free guidance scale")
-    parser.add_argument("--denoising_strength", type=float, default=0, 
+    parser.add_argument("--denoising_strength", type=float, default=0.2, 
                        help="Denoising strength for img2img")
     parser.add_argument("--seed", type=int, default=42, 
                        help="Random seed for generation")

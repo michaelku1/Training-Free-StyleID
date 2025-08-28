@@ -108,7 +108,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         unet: UNet2DConditionModel,
         scheduler: T.Union[DDIMScheduler, PNDMScheduler, LMSDiscreteScheduler],
         safety_checker: StableDiffusionSafetyChecker,
-        attention_op_type: str = '1',
+        attention_op_type: str = '1', # normal attention op
         # feature_extractor: CLIPFeatureExtractor, # NOTE coming from huggingface transformers
     ):
         super().__init__(
@@ -720,6 +720,9 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         else:
             init_latents = content_latents
 
+        # NOTE features already saved in self.attn_features during DDIM feature extraction,
+        # so here it is preparing layers for injection by specifying layer_name x timestep x qkv
+        # in self.attn_features_modify
         ############### Merge features for injection - matching diffusers implementation ###############
         if use_attn_injection:
             # Set modify features like in diffusers implementation
@@ -735,6 +738,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                             style_features[layer_name][t_val][2]     # style v
                         )
         else:
+            # NOTE test without attention injection ok
             self.attn_features_modify = {}
 
         # Setup for feature injection during generation

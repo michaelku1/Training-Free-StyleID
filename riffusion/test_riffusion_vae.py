@@ -60,9 +60,9 @@ def audio_to_spectrogram(audio_path: str) -> Image.Image:
     
     return image
 
-def test_riffusion_vae():
+def test_riffusion_vae(audio_path, output_path, save_spectrogram=False):
     # Load audio file
-    audio_path = "/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav"
+    # audio_path = "/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav"
     
     # Load audio with torchaudio
     # waveform, sample_rate = torchaudio.load(audio_path)
@@ -105,9 +105,13 @@ def test_riffusion_vae():
     # BUG Image.fromarray is very very buggy, its not very pytorch friendly
     # reconstructed_spec_pil = Image.fromarray(reconstructed_spec_np, mode="L")
     reconstructed_spec_pil = numpy_to_pil(reconstructed_spec_np)[0]
-    spectrogram_to_audio(reconstructed_spec_pil, output_path="reconstructed_audio_vae.wav")
+
+    if save_spectrogram:
+        reconstructed_spec_pil.save(output_path.replace(".wav", "_spectrogram.png"))
+
+    spectrogram_to_audio(reconstructed_spec_pil, output_path=output_path)
     
-    print("Files saved: reconstructed_audio_vae.wav")
+    print(f"Files saved: {output_path}")
     print("Listen to the file to check for VAE artifacts!")
 
 def preprocess_image(image: Image.Image) -> torch.Tensor:
@@ -128,4 +132,11 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
     return 2.0 * image_torch - 1.0
 
 if __name__ == "__main__":
-    test_riffusion_vae() 
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--audio_path", type=str, required=True)
+    parser.add_argument("--output_path", type=str, required=True)
+    parser.add_argument("--save_spectrogram", action="store_true")
+    args = parser.parse_args()
+
+    test_riffusion_vae(audio_path=args.audio_path, output_path=args.output_path, save_spectrogram=args.save_spectrogram)

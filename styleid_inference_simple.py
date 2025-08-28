@@ -330,8 +330,6 @@ class StyleIDRiffusionInference:
             clear_memory()
             allocated, reserved = get_memory_usage()
             print(f"Memory after generation: {allocated:.2f} GB allocated")
-        
-
 
         # Step 5: Convert back to audio
         print("\nStep 5: Converting to audio...")
@@ -425,7 +423,7 @@ def main():
     # NOTE gamma for content, (1-gamma) for style
     parser.add_argument("--gamma", type=float, default=0.75, 
                        help="Query preservation parameter (0-1)")
-    parser.add_argument("--T", type=float, default=1.5, 
+    parser.add_argument("--T", type=float, default=0.5, 
                        help="Temperature scaling parameter")
     parser.add_argument("--start_step", type=int, default=49, 
                        help="Starting step for feature injection")
@@ -441,11 +439,11 @@ def main():
     #                    help="Ending text prompt")
     # parser.add_argument("--alpha", type=float, default=0.5, 
     #                    help="Interpolation parameter (0-1)")
-    parser.add_argument("--num_inference_steps", type=int, default=50, 
+    parser.add_argument("--num_inference_steps", type=int, default=200, 
                        help="Number of diffusion steps")
-    parser.add_argument("--guidance_scale", type=float, default=7.5, 
+    parser.add_argument("--guidance_scale", type=float, default=0, 
                        help="Classifier-free guidance scale")
-    parser.add_argument("--denoising_strength", type=float, default=0.8, 
+    parser.add_argument("--denoising_strength", type=float, default=0.2, 
                        help="Denoising strength for img2img")
     parser.add_argument("--seed", type=int, default=42, 
                        help="Random seed for generation")

@@ -43,14 +43,14 @@ def plot_single_spectrogram(audio_path, save_path='single_spectrogram.png', titl
     plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
 
-
-def plot_spectrogram(x1, x2, save_path='spectrogram.png', name1='Spectrogram Plot 1', name2='Spectrogram Plot 2', start_time=0, duration=None):
+def plot_spectrogram(x1, x2, x3, save_path='spectrogram.png', name1='Spectrogram Plot 1', name2='Spectrogram Plot 2', name3='Spectrogram Plot 3', start_time=0, duration=None):
     """
-    Plot spectrogram of two audio files
+    Plot spectrogram of three audio files
 
     Args:
         x1: path to first audio file
         x2: path to second audio file
+        x3: path to third audio file
         start_time: start time in seconds (default: 0)
         duration: duration in seconds, None for full audio (default: None)
     """
@@ -58,6 +58,7 @@ def plot_spectrogram(x1, x2, save_path='spectrogram.png', name1='Spectrogram Plo
     # Load audio files with specified segment
     audio1, sr1 = librosa.load(x1, offset=start_time, duration=duration)
     audio2, sr2 = librosa.load(x2, offset=start_time, duration=duration)
+    audio3, sr3 = librosa.load(x3, offset=start_time, duration=duration)
 
     # Resample if necessary
     if sr1 != sr2:
@@ -71,10 +72,12 @@ def plot_spectrogram(x1, x2, save_path='spectrogram.png', name1='Spectrogram Plo
     hop_length = 512
     spec1 = librosa.stft(audio1, n_fft=n_fft, hop_length=hop_length)
     spec2 = librosa.stft(audio2, n_fft=n_fft, hop_length=hop_length)
+    spec3 = librosa.stft(audio3, n_fft=n_fft, hop_length=hop_length)
 
     # Convert to decibel scale
     spec1_db = librosa.amplitude_to_db(np.abs(spec1), ref=np.max)
     spec2_db = librosa.amplitude_to_db(np.abs(spec2), ref=np.max)
+    spec3_db = librosa.amplitude_to_db(np.abs(spec3), ref=np.max)
 
     # Create figure with three subplots
     fig, (ax1, ax2, ax3) = plt.subplots(3, 1, figsize=(10, 12), sharex=True)
@@ -89,11 +92,16 @@ def plot_spectrogram(x1, x2, save_path='spectrogram.png', name1='Spectrogram Plo
     ax2.set_title(name2)
     fig.colorbar(img2, ax=ax2, format='%+2.0f dB')
 
-    # Plot difference spectrogram
-    spec_diff = spec1_db - spec2_db
-    img3 = librosa.display.specshow(spec_diff, sr=sr, hop_length=hop_length, x_axis='time', y_axis='hz', ax=ax3, cmap='coolwarm')
-    ax3.set_title('Difference (Spec1 - Spec2)')
+    # Plot spectrogram 3
+    img3 = librosa.display.specshow(spec3_db, sr=sr, hop_length=hop_length, x_axis='time', y_axis='hz', ax=ax3, cmap='viridis')
+    ax3.set_title(name3)
     fig.colorbar(img3, ax=ax3, format='%+2.0f dB')
+
+    # Plot difference spectrogram
+    # spec_diff = spec1_db - spec2_db
+    # img3 = librosa.display.specshow(spec_diff, sr=sr, hop_length=hop_length, x_axis='time', y_axis='hz', ax=ax3, cmap='coolwarm')
+    # ax3.set_title('Difference (Spec1 - Spec2)')
+    # fig.colorbar(img3, ax=ax3, format='%+2.0f dB')
 
     # Adjust layout and save figure
     plt.tight_layout()
@@ -148,4 +156,4 @@ if __name__ == "__main__":
     plot_single_spectrogram(test_audio_1, save_path='single_test_spectrogram.png', title='Test Audio Spectrogram')
     
     # Example of plotting two spectrograms for comparison
-    plot_spectrogram(test_audio_1, test_audio_2)
+    plot_spectrogram(test_audio_1, test_audio_2, test_audio_3)
