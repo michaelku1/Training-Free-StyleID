@@ -214,8 +214,7 @@ def compute_request(
     with open(f"{OUTPUT_DIR}/{inputs.seed_image_id}.json", "w") as f:
         json.dump(dataclasses.asdict(output), f, indent=2, ensure_ascii=False)
 
-    return
-    # return json.dumps(dataclasses.asdict(output), ensure_ascii=False)
+    return output
 
 
 
