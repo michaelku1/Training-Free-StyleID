@@ -944,7 +944,6 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         # Try to load using the base pipeline's from_pretrained method
         # but handle the feature_extractor parameter manually
 
-
         try:
             # Load components individually to avoid the feature_extractor issue
             from diffusers import AutoencoderKL, UNet2DConditionModel

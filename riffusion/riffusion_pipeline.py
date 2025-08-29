@@ -231,6 +231,7 @@ class RiffusionPipeline(DiffusionPipeline):
         init_image: Image.Image,
         mask_image: T.Optional[Image.Image] = None,
         use_reweighting: bool = True,
+        mask: T.Optional[torch.Tensor] = None,
     ) -> Image.Image:
         """
         Runs inference using interpolation with both img2img and text conditioning.

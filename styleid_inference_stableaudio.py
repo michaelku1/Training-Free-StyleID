@@ -397,7 +397,7 @@ def main():
                        help="Text prompt for generation")
     parser.add_argument("--num_inference_steps", type=int, default=50, 
                        help="Number of diffusion steps")
-    parser.add_argument("--guidance_scale", type=float, default=7.5, 
+    parser.add_argument("--guidance_scale", type=float, default=0, 
                        help="Classifier-free guidance scale (kept for compatibility, not used by StableAudio)")
     parser.add_argument("--seed", type=int, default=42, 
                        help="Random seed for generation")
