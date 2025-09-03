@@ -233,15 +233,17 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         def hook(model, input, output):
             if self.trigger_get_qkv:
                 # Use the attention_op function like in diffusers implementation
-                _, query, key, value, _ = self._attention_op(model, input[0])
+                _, query, key, value, hidden_states = self._attention_op(model, input[0])
                 
-                self.attn_features[name][int(self.cur_t)] = (query.detach(), key.detach(), value.detach())
+                #TODO
+                # self.attn_features[name][int(self.cur_t)] = (query.detach(), key.detach(), value.detach()
+                self.attn_features[name][int(self.cur_t)] = (hidden_states)
             
             # Always return the output
             return output
         return hook
     
-    def _modify_self_attn_qkv(self, name):
+    def _modify_self_attn_qkv_kv_embedding_copies(self, name):
         """Hook function to inject modified Q, K, V into attention modules.
         Adapted to match the diffusers implementation exactly.
         
@@ -249,40 +251,91 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
         """
         def hook(model, input, output):
             if self.trigger_modify_qkv:
-                _, q_cs, k_cs, v_cs, _ = self._attention_op(model, input[0])
+                _, q_cs, k_cs, v_cs, hidden_states = self._attention_op(model, input[0])
                 
                 # Get stored features for modification
                 if name in self.attn_features_modify and int(self.cur_t) in self.attn_features_modify[name]:
-                    q_c, k_s, v_s = self.attn_features_modify[name][int(self.cur_t)]
+                    hidden_states = self.attn_features_modify[name][int(self.cur_t)]
                     
                     # Handle batch size mismatch due to classifier-free guidance
                     # The current batch might be larger due to CFG (uncond + cond)
                     current_batch_size = q_cs.shape[0]
                     stored_batch_size = q_c.shape[0]
                     
-                    if current_batch_size != stored_batch_size:
-                        # Repeat stored features to match current batch size
-                        repeat_factor = current_batch_size // stored_batch_size
-                        q_c = q_c.repeat(repeat_factor, 1, 1)
-                        k_s = k_s.repeat(repeat_factor, 1, 1)
-                        v_s = v_s.repeat(repeat_factor, 1, 1)
+                    # if current_batch_size != stored_batch_size:
+                    # Repeat stored features to match current batch size
+                    repeat_factor = current_batch_size // stored_batch_size
+                    q_c = q_c.repeat(repeat_factor, 1, 1)
+                    k_s = k_s.repeat(repeat_factor, 1, 1)
+                    v_s = v_s.repeat(repeat_factor, 1, 1)
                     
                     # query preservation
-                    q_hat_cs = q_c * self.gamma + q_cs * (1 - self.gamma)
+                    # q_hat_cs = q_c * self.gamma + q_cs * (1 - self.gamma)
 
                     # NOTE KV copies
-                    k_cs, v_cs = k_s, v_s
+                    # k_cs, v_cs = k_s, v_s
                     
                     # Replace using attention_op like in diffusers
                     _, _, _, _, modified_output = self._attention_op(
                         model, input[0], 
-                        key=k_cs, value=v_cs, query=q_hat_cs, 
+                        key=k_cs, value=v_cs, query=q_cs, 
+                        hidden_states=hidden_states
                         temperature=self.T
                     )
                     
                     return modified_output
             
             # Always return the output if no modification
+            return output
+        return hook
+
+    def _modify_self_attn_qkv_output_interp(self, name):
+        """
+        function overload of "_modify_self_attn_qkv_kv_embedding_copies"
+        perform hidden states (modified_output) interpolation
+        """
+        
+        def hook(model, input, output):
+            """
+            output hidden state for both content and style and perform the weighting
+            """
+            # TODO 
+            # 1. get current modified outputs (hidden states) 
+            # 2. get stored features for modification (also hidden states, may have to modify the
+            # self.attn_features_modify dict store to store the returned hidden states)
+            _, _, _, _, hidden_states = self._attention_op(model, input[0])
+
+            # Get stored features for modification
+            if name in self.attn_features_modify and int(self.cur_t) in self.attn_features_modify[name]:
+                q_c, k_s, v_s = self.attn_features_modify[name][int(self.cur_t)]
+                
+                # Handle batch size mismatch due to classifier-free guidance
+                # The current batch might be larger due to CFG (uncond + cond)
+                # current_batch_size = q_cs.shape[0]
+                # stored_batch_size = q_c.shape[0]
+                
+                # if current_batch_size != stored_batch_size:
+                #     # Repeat stored features to match current batch size
+                #     repeat_factor = current_batch_size // stored_batch_size
+                #     q_c = q_c.repeat(repeat_factor, 1, 1)
+                #     k_s = k_s.repeat(repeat_factor, 1, 1)
+                #     v_s = v_s.repeat(repeat_factor, 1, 1)
+                
+                # query preservation
+                # q_hat_cs = q_c * self.gamma + q_cs * (1 - self.gamma)
+
+                # NOTE KV copies
+                # k_cs, v_cs = k_s, v_s
+                
+                # Replace using attention_op like in diffusers
+                _, _, _, _, modified_output = self._attention_op(
+                    model, input[0], 
+                    key=k_cs, value=v_cs, query=q_hat_cs, 
+                    temperature=self.T
+                )
+                
+                return modified_output
+
             return output
         return hook
 
@@ -715,11 +768,16 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                     t_val = t.item() if hasattr(t, 'item') else t
                     if t_val in content_features[layer_name] and t_val in style_features[layer_name]:
                         # content as q / style as kv - matching diffusers implementation
+                        # TODO store hidden states instead of qkv
                         self.attn_features_modify[layer_name][t_val] = (
                             content_features[layer_name][t_val][0],  # content q
-                            style_features[layer_name][t_val][1],    # style k
-                            style_features[layer_name][t_val][2]     # style v
                         )
+
+                        # self.attn_features_modify[layer_name][t_val] = (
+                        #     content_features[layer_name][t_val][0],  # content q
+                        #     style_features[layer_name][t_val][1],    # style k
+                        #     style_features[layer_name][t_val][2]     # style v
+                        # )
         else:
             # NOTE test without attention injection ok
             self.attn_features_modify = {}
