@@ -2,7 +2,7 @@ import torch
 from transformers import CLIPTextModel, CLIPTokenizer
 from diffusers import AutoencoderKL, UNet2DConditionModel, PNDMScheduler, StableDiffusionPipeline
 from diffusers import LMSDiscreteScheduler, DDIMScheduler
-from stable_diffusion_model_loading import load_stable_diffusion, encode_latent, decode_latent  # load SD
+
 
 # From "https://huggingface.co/blog/stable_diffusion"
 def load_stable_diffusion(sd_version='2.1', precision_t=torch.float32, device="cuda"):
