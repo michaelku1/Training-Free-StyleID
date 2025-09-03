@@ -1,7 +1,3 @@
-"""
-Flask server that serves the riffusion model as an API.
-"""
-
 import dataclasses
 import io
 import json
@@ -23,107 +19,21 @@ torch.backends.cuda.preferred_linalg_library('magma')
 from riffusion.riffusion_pipeline import RiffusionPipeline
 from riffusion.datatypes import InferenceInput, InferenceOutput
 
-# NOTE riffusion pipeline with only one input (no interpolation)
-# from riffusion.datatypes import InferenceInputSimple, InferenceOutput
-# from riffusion.riffusion_pipeline_simple import RiffusionPipelineSimple
-
-
 from riffusion.spectrogram_image_converter import SpectrogramImageConverter
 from riffusion.spectrogram_params import SpectrogramParams
 from riffusion.util import base64_util
 
 OUTPUT_DIR = "/home/mku666/riffusion-hobby/results/audio"
 
-# Flask app with CORS
-app = flask.Flask(__name__)
-CORS(app)
 
-# Log at the INFO level to both stdout and disk
-logging.basicConfig(level=logging.INFO)
-logging.getLogger().addHandler(logging.FileHandler("server.log"))
+checkpoint = "riffusion/riffusion-model-v1"
+device = "cuda"
 
-# Global variable for the model pipeline
-PIPELINE: T.Optional[RiffusionPipeline] = None
-
-# Where built-in seed images are stored
-def run_app(
-    *,
-    checkpoint: str = "riffusion/riffusion-model-v1",
-    no_traced_unet: bool = False,
-    device: str = "cuda",
-    host: str = "127.0.0.1",
-    port: int = 3013,
-    debug: bool = False,
-    ssl_certificate: T.Optional[str] = None,
-    ssl_key: T.Optional[str] = None,
-):
-    """
-    Run a flask API that serves the given riffusion model checkpoint.
-    """
-    # Initialize the model
-    global PIPELINE
-
-    PIPELINE = RiffusionPipeline.load_checkpoint(
-        checkpoint=checkpoint,
-        use_traced_unet=True,
-        device=device,
-    )
-    
-
-    args = dict(
-        debug=debug,
-        threaded=False,
-        host=host,
-        port=port,
-    )
-
-    if ssl_certificate:
-        assert ssl_key is not None
-        args["ssl_context"] = (ssl_certificate, ssl_key)
-
-    app.run(**args)  # type: ignore
-
-
-@app.route("/run_inference/", methods=["POST"])
-def run_inference():
-    """
-    Execute the riffusion model as an API.
-
-    Inputs:
-        Serialized JSON of the InferenceInput dataclass
-
-    Returns:
-        Serialized JSON of the InferenceOutput dataclass
-    """
-    start_time = time.time()
-
-    # Parse the payload as JSON
-    json_data = json.loads(flask.request.data)
-
-    # Log the request
-    logging.info(json_data)
-
-    # Parse an InferenceInput dataclass from the payload
-    try:
-        inputs = dacite.from_dict(InferenceInput, json_data)
-    except dacite.exceptions.WrongTypeError as exception:
-        logging.info(json_data)
-        return str(exception), 400
-    except dacite.exceptions.MissingValueError as exception:
-        logging.info(json_data)
-        return str(exception), 400
-
-    # NOTE
-    response = compute_request(
-        inputs=inputs,
-        pipeline=PIPELINE,
-    )
-
-    # Log the total time
-    logging.info(f"Request took {time.time() - start_time:.2f} s")
-
-    return response
-
+PIPELINE = RiffusionPipeline.load_checkpoint(
+    checkpoint=checkpoint,
+    use_traced_unet=True,
+    device=device,
+)
 
 def compute_request(
     inputs: InferenceInput,
@@ -137,12 +47,12 @@ def compute_request(
         pipeline: The riffusion model pipeline
     """
     # Load the seed image by ID
-    init_image_path = Path(f"{inputs.seed_image_path}.png")
+    init_image_path = Path(f"{inputs.seed_image_path}")
 
     print("######################### input image path: ", init_image_path)
 
     if not init_image_path.is_file():
-        return f"Invalid seed image: {inputs.seed_image_id}", 400
+        return f"Invalid seed image: {inputs.seed_image_path}", 400
     init_image = PIL.Image.open(str(init_image_path)).convert("RGB")
 
     # Load the mask image by ID
@@ -150,10 +60,10 @@ def compute_request(
 
     # NOTE pass mask image here
     # mask_image = PIL.Image.open("...png").convert("RGB")
-    if inputs.mask_image_id:
-        mask_image_path = Path(f"{inputs.mask_image_path}.png")
+    if inputs.mask_image_path:
+        mask_image_path = Path(f"{inputs.mask_image_path}")
         if not mask_image_path.is_file():
-            return f"Invalid mask image: {inputs.mask_image_id}", 400
+            return f"Invalid mask image: {inputs.mask_image_path}", 400
         mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB")
 
     # Execute the model to get the spectrogram image
@@ -212,8 +122,17 @@ def compute_request(
     return output
 
 
-
 if __name__ == "__main__":
-    import argh
+    import json
+    import sys
 
-    argh.dispatch_command(run_app)
+    json_str = sys.argv[1]
+
+    json_data = json.loads(json_str)
+
+    inputs = dacite.from_dict(InferenceInput, json_data)
+
+    response = compute_request(
+        inputs=inputs,
+        pipeline=PIPELINE,
+    )

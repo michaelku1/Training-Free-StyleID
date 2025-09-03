@@ -53,6 +53,10 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+*.wav
+
+sample_data/
+
 # OSX cruft
 .DS_Store
 

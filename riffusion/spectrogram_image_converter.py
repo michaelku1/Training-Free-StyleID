@@ -134,11 +134,17 @@ if __name__ == "__main__":
         # save image 
         # image.save(f"./riffusion/test_spec_images/{style_name}_egdb_1_spectrogram_image.png")
     
+    # audio_clip_names = ["1", "2", "3"]
     audio_clip_names = ["1", "2", "3"]
 
     for audio_clip_name in audio_clip_names:
+
+        # audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/{audio_clip_name}.wav"
+        # audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/accordion/accordion{audio_clip_name}.wav"
+        audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/violin/violin{audio_clip_name}.wav"
+        # audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/piano/piano{audio_clip_name}.wav"
+
         # NOTE egdb DI images
-        audio_path = f"/home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/{audio_clip_name}.wav"
         audio_segment = pydub.AudioSegment.from_file(audio_path)
 
         # initialize spectrogram image converter
@@ -152,7 +158,7 @@ if __name__ == "__main__":
         image_array = np.array(image)
 
         # save image
-        image.save(f"./egdb_DI_1_spec_images/{audio_clip_name}.png")
+        image.save(f"./violin123/{audio_clip_name}.png")
         
         
         

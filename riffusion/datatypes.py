@@ -78,11 +78,10 @@ class InferenceInput:
     num_inference_steps: int = 50
 
     # Which seed image to use
-    seed_image_id: str = "og_beat"
+    seed_image_path: str = None
 
     # ID of mask image to use
-    mask_image_id: T.Optional[str] = None
-
+    mask_image_path: T.Optional[str] = None
 
 @dataclass(frozen=True)
 class InferenceOutput:

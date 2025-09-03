@@ -28,12 +28,12 @@ if __name__ == "__main__":
     duration = 10  # Two seconds duration
 
     parser = argparse.ArgumentParser(description='Plot spectrograms')
-    # parser.add_argument('--style_path', type=str, required=True, help='Path to the style audio file')
-    # parser.add_argument('--content_path', type=str, required=True, help='Path to the content audio file')
-    parser.add_argument('--audio_path', type=str, required=True, help='Path to the audio file')
+    parser.add_argument('--style_path', type=str, required=True, help='Path to the style audio file')
+    parser.add_argument('--content_path', type=str, required=True, help='Path to the content audio file')
+    # parser.add_argument('--audio_path', type=str, required=True, help='Path to the audio file')
     parser.add_argument('--output_path', type=str, required=True, help='Path to the output audio file')
     args = parser.parse_args()
 
-    # plot_spectrogram(args.style_path, args.content_path, args.output_path, save_path='spectrogram.png', name1='Style Spectrogram', name2='Content Spectrogram', name3='Output Spectrogram', start_time=start_time, duration=duration)
-    plot_single_spectrogram(args.audio_path, save_path=args.output_path, title='Output Spectrogram', start_time=start_time, duration=duration)
+    plot_spectrogram(args.style_path, args.content_path, args.output_path, save_path='spectrogram.png', name1='Style Spectrogram', name2='Content Spectrogram', name3='Output Spectrogram', start_time=start_time, duration=duration)
+    # plot_single_spectrogram(args.audio_path, save_path=args.output_path, title='Output Spectrogram', start_time=start_time, duration=duration)
 

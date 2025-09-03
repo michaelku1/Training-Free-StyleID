@@ -432,7 +432,7 @@ class RiffusionPipeline(DiffusionPipeline):
                 torch.cat([latents] * 2) if do_classifier_free_guidance else latents
             )
 
-            # scale with variance?
+            # scale with variance to fit unet input scale?
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
             # predict the noise residual
@@ -452,12 +452,15 @@ class RiffusionPipeline(DiffusionPipeline):
             latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
             if mask is not None:
+                # this part is to align the timestep of original latent and the
+                # timestep of the current denoised latent (to ensure sampling consistency between content and style?)
                 init_latents_proper = self.scheduler.add_noise(
                     init_latents_orig, noise, torch.tensor([t])
                 )
 
                 # NOTE where img2img interpolation happens (blending between masked latent and current sampled latents)
-                # NOTE 這邊到底在幹麻，如果是要inject style的話，為什麼要用這個mask的方式來做
+                # NOTE mask is of continuous values (0-1)
+                # NOTE 第一項應該是style放多少權重，第二項是content放多少權重
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
         # NOTE performs vae decoding
