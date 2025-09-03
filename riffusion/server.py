@@ -142,7 +142,7 @@ def compute_request(
     print("######################### input image path: ", init_image_path)
 
     if not init_image_path.is_file():
-        return f"Invalid seed image: {inputs.seed_image_id}", 400
+        return f"Invalid seed image: {inputs.seed_image_path}", 400
     init_image = PIL.Image.open(str(init_image_path)).convert("RGB")
 
     # Load the mask image by ID
@@ -150,10 +150,10 @@ def compute_request(
 
     # NOTE pass mask image here
     # mask_image = PIL.Image.open("...png").convert("RGB")
-    if inputs.mask_image_id:
+    if inputs.mask_image_path:
         mask_image_path = Path(f"{inputs.mask_image_path}.png")
         if not mask_image_path.is_file():
-            return f"Invalid mask image: {inputs.mask_image_id}", 400
+            return f"Invalid mask image: {inputs.mask_image_path}", 400
         mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB")
 
     # Execute the model to get the spectrogram image
@@ -204,9 +204,9 @@ def compute_request(
     torch.cuda.empty_cache()  # free cached memory
     torch.cuda.ipc_collect()  # (optional) reclaim inter-process memory
     
-    output_path = f"{inputs.seed_image_path.split('/')[-2]}_{inputs.mask_image_path.split('/')[-2]}"
+    output_name = f"{''.join(inputs.seed_image_path.split('/')[-2:])}_to_{''.join(inputs.mask_image_path.split('/')[-2:])}"
 
-    with open(f"{OUTPUT_DIR}/{output_path}.json", "w") as f:
+    with open(f"{OUTPUT_DIR}/{output_name}.json", "w") as f:
         json.dump(dataclasses.asdict(output), f, indent=2, ensure_ascii=False)
 
     return output

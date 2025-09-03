@@ -11,7 +11,7 @@ curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/
 CUDA_VISIBLE_DEVICES=1 curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.2,"guidance":0},"num_inference_steps":50,"seed_image_path":"/home/mku666/riffusion-hobby/results/riffusion_seed_mask_images/accordian123/1.png","mask_image_path":"/home/mku666/riffusion-hobby/results/riffusion_seed_mask_images/violin123/1.png","alpha":0,"end":{"prompt":"","seed":123,"denoising":0.2,"guidance":0}}'
 
 # base64 decode (w/ riffusion output json file)
-python3 decode_audio_from_base64.py --json_file_path /home/mku666/riffusion-hobby/results/riffusion_test/1.json  --output_wav_path ../results/riffusion_test/1.wav
+python3 decode_audio_from_base64.py --json_file_path /home/mku666/riffusion-hobby/results/audio/clean2_to_chopper1.json  --output_wav_path ../results/audio/clean2_to_chopper1.wav
 # dataset paths
 /mnt/gestalt/home/ytsrt/EGDB-Large-Subset
 
