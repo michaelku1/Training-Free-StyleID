@@ -83,6 +83,9 @@ class InferenceInput:
     # ID of mask image to use
     mask_image_path: T.Optional[str] = None
 
+    # output path
+    output_path: str = None
+
 @dataclass(frozen=True)
 class InferenceOutput:
     """

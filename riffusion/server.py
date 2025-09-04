@@ -32,7 +32,6 @@ from riffusion.spectrogram_image_converter import SpectrogramImageConverter
 from riffusion.spectrogram_params import SpectrogramParams
 from riffusion.util import base64_util
 
-OUTPUT_DIR = "/home/mku666/riffusion-hobby/results/audio"
 
 # Flask app with CORS
 app = flask.Flask(__name__)
@@ -206,7 +205,7 @@ def compute_request(
     
     output_name = f"{''.join(inputs.seed_image_path.split('/')[-2:])}_to_{''.join(inputs.mask_image_path.split('/')[-2:])}"
 
-    with open(f"{OUTPUT_DIR}/{output_name}.json", "w") as f:
+    with open(f"{inputs.output_path}/{output_name}.json", "w") as f:
         json.dump(dataclasses.asdict(output), f, indent=2, ensure_ascii=False)
 
     return output
