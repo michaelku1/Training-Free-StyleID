@@ -279,7 +279,7 @@ class StyleIDRiffusionPipeline(RiffusionPipeline):
                     _, _, _, _, modified_output = self._attention_op(
                         model, input[0], 
                         key=k_cs, value=v_cs, query=q_cs, 
-                        hidden_states=hidden_states
+                        hidden_states=hidden_states,
                         temperature=self.T
                     )
                     

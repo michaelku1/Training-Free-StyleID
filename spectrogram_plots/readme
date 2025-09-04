@@ -1,0 +1,6 @@
+## spectrogram analysis (gray scale)
+
+- black part is voicing
+- white part is non-voicing
+- with egdb tone, the blurry part represents harmonics clipped due to distortion
+

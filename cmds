@@ -17,7 +17,7 @@ python3 decode_audio_from_base64.py --json_file_path /home/mku666/riffusion-hobb
 
 /mnt/gestalt/home/ytsrt/reaMIXed
 
-# run styleid inference on EGDB content and tone transfer
+# run riffusion styleid inference on EGDB content and tone transfer
 CUDA_VISIBLE_DEVICES=1 python3 styleid_inference.py --content_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/1.wav --style_audio /home/mku666/riffusion-hobby/stable_audio_api/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav --output_path ./egdb_di_1_chopper_style_output.wav --prompt_start "" --prompt_end ""
 
 # run riffusion styleid inference on MusicTI dataset

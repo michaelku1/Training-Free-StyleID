@@ -295,7 +295,7 @@ class RiffusionPipeline(DiffusionPipeline):
 
         # print("######################### save preprocessed mask: ", mask)
         # mask.save("/home/mku666/riffusion-hobby/riffusion/mask_processed.png")
-            
+        
         outputs = self.interpolate_img2img(
             text_embeddings=text_embedding,
             init_latents=init_latents,
