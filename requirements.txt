@@ -18,4 +18,5 @@ torch
 torchaudio
 torchvision
 transformers
+flask_ngrok
 
