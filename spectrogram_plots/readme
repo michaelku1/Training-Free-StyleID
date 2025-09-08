@@ -1,6 +1,14 @@
-## spectrogram analysis (gray scale)
+## How to read spectrogram
+https://homepage.ntu.edu.tw/~karchung/Phonetics%20II%20page%20twenty.htm
+Pitch periods (vertical lines) + Formant structure (共振峰)
+Narrow band vs wide band spectrograms
+Short analysis window —> higher frequency resolution at the expense of time
+Long analysis window —> higher time resolution at the expense of frequencies
+The higher the fundamental frequency the more spacing between harmonics (you can you think f0 as the pitch of one’s voice, and while varying the pitch the spacing between harmonics increases)
+In a narrow band spectrogram, voicing results in harmonics, with again the lowest one or two being the strongest.
+A formant is a dark band on a wide band spectrogram, which corresponds to a vocal tract resonance. Technically, it represents a set of adjacent harmonics which are boosted by a resonance in some part of the vocal tract.
 
+## Spectrogram analysis (gray scale)
 - black part is voicing
 - white part is non-voicing
 - with egdb tone, the blurry part represents harmonics clipped due to distortion
-
