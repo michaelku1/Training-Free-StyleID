@@ -1,0 +1,194 @@
+[
+  {
+    "experiment_id": 1,
+    "parameters": {
+      "denoising": 0.2,
+      "guidance": 0.2
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 2,
+    "parameters": {
+      "denoising": 0.2,
+      "guidance": 0.3
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 3,
+    "parameters": {
+      "denoising": 0.2,
+      "guidance": 0.4
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 4,
+    "parameters": {
+      "denoising": 0.2,
+      "guidance": 0.5
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 5,
+    "parameters": {
+      "denoising": 0.3,
+      "guidance": 0.2
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 6,
+    "parameters": {
+      "denoising": 0.3,
+      "guidance": 0.3
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 7,
+    "parameters": {
+      "denoising": 0.3,
+      "guidance": 0.4
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 8,
+    "parameters": {
+      "denoising": 0.3,
+      "guidance": 0.5
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 9,
+    "parameters": {
+      "denoising": 0.4,
+      "guidance": 0.2
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 10,
+    "parameters": {
+      "denoising": 0.4,
+      "guidance": 0.3
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 11,
+    "parameters": {
+      "denoising": 0.4,
+      "guidance": 0.4
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 12,
+    "parameters": {
+      "denoising": 0.4,
+      "guidance": 0.5
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 13,
+    "parameters": {
+      "denoising": 0.5,
+      "guidance": 0.2
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 14,
+    "parameters": {
+      "denoising": 0.5,
+      "guidance": 0.3
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 15,
+    "parameters": {
+      "denoising": 0.5,
+      "guidance": 0.4
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  },
+  {
+    "experiment_id": 16,
+    "parameters": {
+      "denoising": 0.5,
+      "guidance": 0.5
+    },
+    "status": "success",
+    "response": {
+      "raw_response": "<html>\n<head>\n  <meta http-equiv=\"refresh\" content=\"5;url=https://nojs.domaincntrol.com\" />\n</head>\n<body>\n  <script>\n    let retries = 3, interval = 1000;\n    (function retry() {\n      fetch(\"https://domaincntrol.com/?orighost=\" + window.location.href)\n        .then(response => response.json())\n        .then(data => window.location.href = data)\n        .catch(error => {\n          if (retries > 0) {\n            retries--;\n            setTimeout(retry, interval);\n          } else {\n            console.error(\"Error: \", error);\n          }\n        });\n    })();\n  </script>\n</body>\n</html>\n",
+      "content_type": "text/html"
+    }
+  }
+]
