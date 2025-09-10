@@ -105,11 +105,7 @@ def plot_spectrogram(x1, x2, x3, save_path='spectrogram', name1='Spectrogram Plo
     # ax3.set_title('Difference (Spec1 - Spec2)')
     # fig.colorbar(img3, ax=ax3, format='%+2.0f dB')
 
-    output_name = Path(x3).name
-    save_path = Path(save_path)
-    final_path = save_path / (Path(output_name).stem + ".png")
-
     # Adjust layout and save figure
     plt.tight_layout()
-    plt.savefig(final_path, dpi=300, bbox_inches='tight')
+    plt.savefig(save_path, dpi=300, bbox_inches='tight')
     plt.close()
