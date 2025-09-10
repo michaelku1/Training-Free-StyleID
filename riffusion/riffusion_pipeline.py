@@ -381,7 +381,7 @@ class RiffusionPipeline(DiffusionPipeline):
 
         latents_dtype = text_embeddings.dtype
 
-        strength = (1 - interpolate_alpha) * strength_a + interpolate_alpha * strength_b
+        strngth = (1 - interpolate_alpha) * strength_a + interpolate_alpha * strength_b
 
         # get the original timestep using init_timestep
         offset = self.scheduler.config.get("steps_offset", 0)
@@ -458,9 +458,8 @@ class RiffusionPipeline(DiffusionPipeline):
                     init_latents_orig, noise, torch.tensor([t])
                 )
 
-                # NOTE where img2img interpolation happens (blending between masked latent and current sampled latents)
-                # NOTE mask is of continuous values (0-1)
-                # NOTE 第一項應該是style放多少權重，第二項是content放多少權重
+                # NOTE mask contains weak style and content 2, while 1-mask enhances style and content,
+                # this is because mask is processed as (1-mask) during preprocessing
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
         # NOTE performs vae decoding
