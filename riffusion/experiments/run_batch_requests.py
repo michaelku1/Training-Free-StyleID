@@ -1,3 +1,7 @@
+"""
+run batch requests on multiple experimental config (json files)
+"""
+
 import requests
 import json
 import os

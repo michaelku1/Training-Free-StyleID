@@ -1,21 +1,26 @@
+"""
+generate different experimental config given specified params
+"""
+
 import itertools
 import requests
 import json
 from copy import deepcopy
+
 
 # Your parameter lists
 DENOISING = [0.2, 0.3, 0.4, 0.5]
 GUIDANCE = [0.2, 0.3, 0.4, 0.5]
 
 # Your other constants (replace with actual values)
-START_SEED = 12345
-END_SEED = 67890
+START_SEED=42
+END_SEED=123
 STEPS = 50
-SEED_IMAGE_PATH = "path/to/seed_image.jpg"
-MASK_IMAGE_PATH = "path/to/mask_image.jpg"
+MASK_IMAGE_PATH="/home/mku666/riffusion-hobby/sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/1"
+SEED_IMAGE_PATH = "/home/mku666/riffusion-hobby/sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/2"
 ALPHA = 0.5
-OUTPUT_PATH = "path/to/output"
-API_ENDPOINT = "https://your-api-endpoint.com/generate"  # Replace with your actual endpoint
+OUTPUT_PATH = "/home/mku666/riffusion-hobby/results/audio"
+API_ENDPOINT = "http://127.0.0.1:5000/run_inference/"  # Replace with your actual endpoint
 
 # Base data template
 base_data = {
