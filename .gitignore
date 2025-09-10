@@ -19,6 +19,7 @@ seed_images/
 examples/
 test/
 riffusion/py.typed
+dataset_paths
 
 # C extensions
 *.so
