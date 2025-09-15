@@ -5,7 +5,11 @@
 export CUDA_VISIBLE_DEVICES=1
 
 # Base URL for the API
-API_URL="http://127.0.0.1:8080/run_inference/"
+API_URL="http://127.0.0.1:3013/run_inference/"
+
+# Ensure output directory exists (used by server to write JSON)
+OUTPUT_DIR="/home/mku666/riffusion-hobby/results/audio"
+mkdir -p "$OUTPUT_DIR"
 
 # Function to run inference with given parameters
 run_inference() {
@@ -18,7 +22,7 @@ run_inference() {
     echo "Mask image: $mask_path"
     echo "----------------------------------------"
     
-    curl -X POST "$API_URL" \
+    curl --fail --silent --show-error -X POST "$API_URL" \
         -H "Content-Type: application/json" \
         -d "{
             \"start\": {
@@ -27,20 +31,22 @@ run_inference() {
                 \"denoising\": 0.2,
                 \"guidance\": 0
             },
-            \"num_inference_steps\": 50,
-            \"seed_image_path\": \"$seed_path\",
-            \"mask_image_path\": \"$mask_path\",
-            \"alpha\": 0,
             \"end\": {
                 \"prompt\": \"\",
                 \"seed\": 123,
                 \"denoising\": 0.2,
                 \"guidance\": 0
-            }
-        }"
+            },
+            \"alpha\": 0.0,
+            \"num_inference_steps\": 50,
+            \"seed_image_path\": \"$seed_path\",
+            \"mask_image_path\": \"$mask_path\",
+            \"output_path\": \"$OUTPUT_DIR\"
+        }" || echo "Request failed for: $description"
     
     echo -e "\n\n"
 }
+
 
 # Base path for images
 BASE_PATH="/home/mku666/riffusion-hobby/results/riffusion_seed_mask_images/EGDB_DI_1"

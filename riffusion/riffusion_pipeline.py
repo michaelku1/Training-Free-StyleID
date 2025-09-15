@@ -450,10 +450,9 @@ class RiffusionPipeline(DiffusionPipeline):
             # NOTE denoising process
             # compute the previous noisy sample x_t -> x_t-1
             latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
-
+            
             if mask is not None:
-                # this part is to align the timestep of original latent and the
-                # timestep of the current denoised latent (to ensure sampling consistency between content and style?)
+                # latent with single timestep
                 init_latents_proper = self.scheduler.add_noise(
                     init_latents_orig, noise, torch.tensor([t])
                 )
@@ -461,6 +460,7 @@ class RiffusionPipeline(DiffusionPipeline):
                 # NOTE mask contains weak style and content, while 1-mask enhances style and content,
                 # this is because mask is processed as (1-mask) during preprocessing
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
+                # latents = latents * (1 - mask)
 
         # NOTE performs vae decoding
         latents = 1.0 / 0.18215 * latents
@@ -511,7 +511,7 @@ def preprocess_mask(mask: Image.Image, scale_factor: int = 8) -> torch.Tensor:
     mask_np = mask_np[None].transpose(0, 1, 2, 3)  # what does this step do?
 
     # Invert to repaint white and keep black
-    # mask_np = 1 - mask_np
+    mask_np = 1 - mask_np
 
     return torch.from_numpy(mask_np)
 
