@@ -64,16 +64,16 @@ for i in {1..10}; do
     done
 done
 
-# Run all combinations of chopper vs clean images (reverse)
-echo "Running all chopper vs clean combinations:"
-for i in {1..10}; do
-    for j in {1..10}; do
-        seed_path="$BASE_PATH/chopper/$i"
-        mask_path="$BASE_PATH/clean/$j"
-        run_inference "$seed_path" "$mask_path" "chopper$i vs clean$j"
-    done
-done
+# # Run all combinations of chopper vs clean images (reverse)
+# echo "Running all chopper vs clean combinations:"
+# for i in {1..10}; do
+#     for j in {1..10}; do
+#         seed_path="$BASE_PATH/chopper/$i"
+#         mask_path="$BASE_PATH/clean/$j"
+#         run_inference "$seed_path" "$mask_path" "chopper$i vs clean$j"
+#     done
+# done
 
-echo "=========================================="
-echo "Batch inference completed!"
-echo "Total combinations run: 200 (100 clean vs chopper + 100 chopper vs clean)"
+# echo "=========================================="
+# echo "Batch inference completed!"
+# echo "Total combinations run: 200 (100 clean vs chopper + 100 chopper vs clean)"
