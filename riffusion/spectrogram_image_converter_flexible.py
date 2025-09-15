@@ -114,6 +114,25 @@ class SpectrogramImageConverter:
         return segment
 
 
+def detect_directory_structure(audio_base_path):
+    """
+    Auto-detect the directory structure.
+    Returns 'subset' for EGDB-Large-Subset structure or 'large' for EGDB-Large structure.
+    """
+    if os.path.exists(os.path.join(audio_base_path, "Tone")):
+        return "subset"
+    elif os.path.exists(os.path.join(audio_base_path, "AudioDI")):
+        return "large"
+    else:
+        # Try to detect by looking for tone directories
+        tone_dirs = [d for d in os.listdir(audio_base_path) 
+                    if os.path.isdir(os.path.join(audio_base_path, d)) and d != "AudioDI"]
+        if tone_dirs:
+            return "large"
+        else:
+            raise ValueError(f"Cannot detect directory structure in {audio_base_path}")
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Generate spectrogram images from audio files")
     
@@ -129,7 +148,7 @@ if __name__ == "__main__":
                             "Available: Chopper, Easy Blues, First Compression, Gravity, "
                             "Light House, Moore Clean, New Guitar Icon, Rhapsody, Room 808, Dark Soul")
     parser.add_argument("--audio-base-path", 
-                       default="/home/mku666/riffusion-hobby/sample_data/fx_data/EGDB-Large-Subset",
+                       default="/home/mku666/riffusion-hobby/sample_data/EGDB-Large/train",
                        help="Base path to audio data directory")
     parser.add_argument("--output-base-path", 
                        default="/home/mku666/riffusion-hobby/results/spectrogram_images",
@@ -147,12 +166,23 @@ if __name__ == "__main__":
     if args.source_type == "Tone" and not args.tone:
         parser.error("--tone is required when --source-type is 'Tone'")
     
-    # Build audio directory path based on source type
+    # Auto-detect directory structure
+    try:
+        structure = detect_directory_structure(args.audio_base_path)
+        print(f"Detected directory structure: {structure}")
+    except ValueError as e:
+        print(f"Error: {e}")
+        exit(1)
+    
+    # Build audio directory path based on source type and structure
     if args.source_type == "AudioDI":
         audio_dir = f"{args.audio_base_path}/AudioDI/{args.di}"
         output_subdir = f"AudioDI_{args.di}"
     elif args.source_type == "Tone":
-        audio_dir = f"{args.audio_base_path}/{args.tone}/{args.di}"
+        if structure == "subset":
+            audio_dir = f"{args.audio_base_path}/Tone/{args.tone}/{args.di}"
+        else:  # large structure
+            audio_dir = f"{args.audio_base_path}/{args.tone}/{args.di}"
         output_subdir = f"Tone_{args.tone}_{args.di}"
     else:
         raise ValueError("source_type must be either 'AudioDI' or 'Tone'")
@@ -179,7 +209,7 @@ if __name__ == "__main__":
     print(f"Processing {len(wav_files)} audio files from: {audio_dir}")
     print(f"Output directory: {output_path}")
     print(f"Device: {args.device}")
-
+    
     # Initialize spectrogram image converter once
     params = SpectrogramParams()
     image_converter = SpectrogramImageConverter(params=params, device=args.device)
@@ -198,7 +228,7 @@ if __name__ == "__main__":
             
             # Convert audio to spectrogram image
             image = image_converter.spectrogram_image_from_audio(audio_segment)
-
+            
             # Save image
             output_file = f"{output_path}/{filename}.png"
             image.save(output_file)
@@ -214,9 +244,3 @@ if __name__ == "__main__":
     print(f"Successfully processed: {processed_count} files")
     print(f"Errors: {error_count} files")
     print(f"Generated spectrogram images saved to: {output_path}")
-        
-        
-        
-        
-        
-        

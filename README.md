@@ -9,20 +9,17 @@ generate spectrograms --> riffusion/spectrogram_image_converter.py
 batch generate spectrograms --> generate_spectrograms.sh
 
 ```bash
+# Generate spectrograms for all tones using DI_1
+# Usage: ./generate_spectrograms.sh [max_files_per_tone] [audio_base_path]
 
+# Default: 5 files from each tone
+./generate_spectrograms.sh
 
-First 10 files from Easy Blues tone, DI_1
-./generate_spectrograms.sh Tone DI_1 "Easy Blues" 10
+# 2 files from each tone in EGDB-Large-Subset
+./generate_spectrograms.sh 2 "/home/mku666/riffusion-hobby/sample_data/fx_data/EGDB-Large-Subset"
 
-# All AudioDI files from DI_1
-./generate_spectrograms.sh AudioDI DI_1 "" 999
-
-# First 3 files from Moore Clean tone, DI_10
-./generate_spectrograms.sh Tone DI_10 "Moore Clean" 3
-
-# First 8 files from Gravity tone, DI_1
-./generate_spectrograms.sh Tone DI_1 Gravity 8
-
+# 10 files from each tone in EGDB-Large/train
+./generate_spectrograms.sh 10 "/home/mku666/riffusion-hobby/sample_data/EGDB-Large/train"
 ```
 
 riffusion server --> riffusion/server.py
