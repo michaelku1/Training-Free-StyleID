@@ -48,3 +48,12 @@ TBD
 
 ## style injection
 TBD
+
+
+
+## spectrogram batch processing
+```bash
+# Usage: ./batch_run_spectrogram.sh <SEED_DIR> <MASK_DIR> <NUM_SEED_IMAGES>
+./batch_run_spectrogram.sh AudioDI_DI_1 "Tone_Moore Clean_DI_1" 5
+```
+
