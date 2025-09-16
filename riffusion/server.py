@@ -19,11 +19,10 @@ from flask_cors import CORS
 # Fix CUDA linear algebra backend to avoid cusolver errors
 torch.backends.cuda.preferred_linalg_library('magma')
 
-# NOTE original riffusion pipeline
-from riffusion.riffusion_pipeline import RiffusionPipeline
 from riffusion.datatypes import InferenceInput, InferenceOutput
 
 # NOTE riffusion pipeline with only one input (no interpolation)
+from riffusion.riffusion_pipeline_mix_tone import RiffusionPipeline
 # from riffusion.datatypes import InferenceInputSimple, InferenceOutput
 # from riffusion.riffusion_pipeline_simple import RiffusionPipelineSimple
 
@@ -42,7 +41,7 @@ logging.basicConfig(level=logging.INFO)
 logging.getLogger().addHandler(logging.FileHandler("server.log"))
 
 # Global variable for the model pipeline
-PIPELINE: T.Optional[RiffusionPipeline] = None
+# PIPELINE: T.Optional[RiffusionPipeline] = None
 
 # Where built-in seed images are storedrun
 def run_app(
@@ -68,7 +67,6 @@ def run_app(
         device=device,
     )
     
-
     args = dict(
         debug=debug,
         threaded=False,
@@ -126,7 +124,7 @@ def run_inference():
 
 def compute_request(
     inputs: InferenceInput,
-    pipeline: RiffusionPipeline,
+    pipeline: None,
 ) -> T.Union[str, T.Tuple[str, int]]:
     """
     Does all the heavy lifting of the request.
@@ -135,6 +133,7 @@ def compute_request(
         inputs: The input dataclass
         pipeline: The riffusion model pipeline
     """
+    
     # Load the seed image by ID
     init_image_path = Path(f"{inputs.seed_image_path}.png")
 

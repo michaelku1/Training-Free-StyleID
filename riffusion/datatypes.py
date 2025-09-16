@@ -86,6 +86,9 @@ class InferenceInput:
     # output path
     output_path: str = None
 
+    # mix tone option
+    mix_tone: bool = False
+
 @dataclass(frozen=True)
 class InferenceOutput:
     """
