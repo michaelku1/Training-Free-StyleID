@@ -6,7 +6,8 @@ from __future__ import annotations
 import dataclasses
 import functools
 import inspect
-import typing as T, List
+import typing as T
+from typing import List
 
 import numpy as np
 import torch
@@ -473,14 +474,24 @@ class RiffusionPipeline(DiffusionPipeline):
                 # ϕmix = (1−λ)·ϕstyle1 + λ·ϕstyle2 --> mix style, can generalize to multiple styles
                 # ϕguided= ϕcontent + β·(ϕmix−ϕcontent) --> style injection method
 
+                num_masks = len(masks)
+                lambda_weights = [1.0 / num_masks] * num_masks  # Equal weights, sum to 1.0
+                
                 mask_mix = 0
                 for i, mask in enumerate(masks):
-                    mask_mix += LAMBDA[i] * mask
+                    mask_mix += lambda_weights[i] * mask
+
+                # mask_mix = 0
+                # for i, mask in enumerate(masks):
+                #     mask_mix += LAMBDA[i] * mask
 
                 # NOTE mask contains weak style and content, while 1-mask enhances style and content,
                 # this is because mask is processed as (1-mask) during preprocessing
                 latents = latents + BETA*(mask_mix - latents)
-                # latents = (init_latents_proper * mask) + (latents * (1 - mask))
+                latents = (init_latents_proper * mask) + (latents * (1 - mask))
+
+            else:
+                latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
         # NOTE performs vae decoding
         latents = 1.0 / 0.18215 * latents
