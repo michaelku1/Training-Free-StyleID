@@ -149,21 +149,30 @@ def compute_request(
 
     # NOTE pass mask image here
     # mask_image = PIL.Image.open("...png").convert("RGB")
+    # NOTE pass mask image here
+    # mask_image = PIL.Image.open("...png").convert("RGB")
     if inputs.mask_image_path:
+        print(f"DEBUG: mask_image_path type: {type(inputs.mask_image_path)}")
+        print(f"DEBUG: mask_image_path value: {inputs.mask_image_path}")
+        
         # multi style mask
         if isinstance(inputs.mask_image_path, list):
+            print("DEBUG: Processing as list of masks")
             mask_image = []
-            for mask_image_path in inputs.mask_image_path:
-                mask_image_path = Path(f"{mask_image_path}.png")
+            for i, mask_path in enumerate(inputs.mask_image_path):
+                mask_image_path = Path(f"{mask_path}.png")
+                print(f"DEBUG: Checking mask {i}: {mask_image_path}")
                 if not mask_image_path.is_file():
-                    return f"Invalid mask image: {mask_image_path}", 400
+                    return f"Invalid mask image: {mask_path}", 400
                 mask_image.append(PIL.Image.open(str(mask_image_path)).convert("RGB"))
         else:
             # single style mask
+            print("DEBUG: Processing as single mask")
             mask_image_path = Path(f"{inputs.mask_image_path}.png")
+            print(f"DEBUG: Checking single mask: {mask_image_path}")
             if not mask_image_path.is_file():
                 return f"Invalid mask image: {inputs.mask_image_path}", 400
-            mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB")
+            mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB"))
 
     # Execute the model to get the spectrogram image
     image = pipeline.riffuse(
