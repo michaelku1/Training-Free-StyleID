@@ -18,8 +18,8 @@ if [ $# -ne 3 ]; then
     exit 1
 fi
 
-# Set CUDA device
-export CUDA_VISIBLE_DEVICES=1
+# Set CUDA device (use environment variable if set, otherwise default to 1)
+export CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-1}
 
 # Get user input parameters
 SEED_DIRECTORY="$1"
@@ -120,8 +120,8 @@ echo "=========================================="
 echo "Running all seed vs mask combinations:"
 for i in "${!SEED_IMAGES[@]}"; do
     for j in "${!MASK_IMAGES[@]}"; do
-        seed_path="${SEED_IMAGES[$i]}"
-        mask_path="${MASK_IMAGES[$j]}"
+        seed_path="${SEED_IMAGES[$i]%.png}"  # Remove .png extension
+        mask_path="${MASK_IMAGES[$j]%.png}"  # Remove .png extension
         seed_num=$((i+1))
         mask_num=$((j+1))
         run_inference "$seed_path" "$mask_path" "Seed_${seed_num}_$(basename "$seed_path") vs Mask_${mask_num}_$(basename "$mask_path")"

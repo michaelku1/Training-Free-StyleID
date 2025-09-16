@@ -29,17 +29,11 @@ generation --> curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Typ
 ## batch processing
 Run batch inference with custom DI directory and file count:
 
-```bash
-# Usage: ./batch_run.sh <DI_DIRECTORY> <NUM_FILES>
-./batch_run.sh DI_1 10        # Process first 10 wav files from DI_1
-./batch_run.sh DI_105 5       # Process first 5 wav files from DI_105
-```
-
 The script will:
 - Use wav files from `/sample_data/fx_data/EGDB-Large-Subset/AudioDI/<DI_DIRECTORY>/` as seed audio
 - Apply all available tone masks from `/sample_data/fx_data/EGDB-Large-Subset/Tone/` directory
 - Generate combinations of each seed file with each tone variation
-- Output results to `/results/audio/`
+- Output results to `/results/audio/` (WAV files + JSON metadata)
 
 Available tone names: Moore Clean, Rhapsody, First Compression, New Guitar Icon, Gravity, Chopper, Room 808, Light House, Dark Soul, Easy Blues
 
@@ -54,6 +48,23 @@ TBD
 ## spectrogram batch processing
 ```bash
 # Usage: ./batch_run_spectrogram.sh <SEED_DIR> <MASK_DIR> <NUM_SEED_IMAGES>
-./batch_run_spectrogram.sh AudioDI_DI_1 "Tone_Moore Clean_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Moore Clean_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Moore Clean_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Gravity_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Gravity_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Rhapsody_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Rhapsody_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_First Compression_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_First Compression_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_New Guitar Icon_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_New Guitar Icon_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Room 808_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Room 808_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Light House_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Light House_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Dark Soul_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Dark Soul_DI_10" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Easy Blues_DI_1" 5
+./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Easy Blues_DI_10" 5
 ```
 

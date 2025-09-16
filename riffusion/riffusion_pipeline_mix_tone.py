@@ -6,7 +6,7 @@ from __future__ import annotations
 import dataclasses
 import functools
 import inspect
-import typing as T
+import typing as T, List
 
 import numpy as np
 import torch
@@ -25,6 +25,9 @@ from riffusion.external.prompt_weighting import get_weighted_text_embeddings
 from riffusion.util import torch_util
 
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
+
+LAMBDA = [0.5, 0.5, 0.5] # multi style mix
+BETA = 0.1 # content style mix
 
 
 class RiffusionPipeline(DiffusionPipeline):
@@ -229,7 +232,7 @@ class RiffusionPipeline(DiffusionPipeline):
         self,
         inputs: InferenceInput,
         init_image: Image.Image,
-        mask_image: T.Optional[Image.Image] = None,
+        mask_image: List[Image.Image],
         use_reweighting: bool = True,
         mask: T.Optional[torch.Tensor] = None,
     ) -> Image.Image:
@@ -286,12 +289,18 @@ class RiffusionPipeline(DiffusionPipeline):
         # Prepare mask latent
         # NOTE you can define your own mask here, but as a tensor
         mask: T.Optional[torch.Tensor] = None
+        masks = []
+
+        # TODO preprocess list of masks
         if mask_image:
-            vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
-            # rescale mask dimensions corresponding to vae dims
-            mask = preprocess_mask(mask_image, scale_factor=vae_scale_factor).to(
-                device=self.device, dtype=embed_start.dtype
-            )
+            for mask_img in mask_image:
+                vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+                # rescale mask dimensions corresponding to vae dims
+                mask = preprocess_mask(mask_img, scale_factor=vae_scale_factor).to(
+                    device=self.device, dtype=embed_start.dtype
+                )
+
+                masks.append(mask)
 
         # print("######################### save preprocessed mask: ", mask)
         # mask.save("/home/mku666/riffusion-hobby/riffusion/mask_processed.png")
@@ -299,7 +308,7 @@ class RiffusionPipeline(DiffusionPipeline):
         outputs = self.interpolate_img2img(
             text_embeddings=text_embedding,
             init_latents=init_latents,
-            mask=mask,
+            masks=masks,
             generator_a=generator_start,
             generator_b=generator_end,
             interpolate_alpha=alpha,
@@ -320,7 +329,7 @@ class RiffusionPipeline(DiffusionPipeline):
         generator_a: torch.Generator,
         generator_b: torch.Generator,
         interpolate_alpha: float,
-        mask: T.Optional[torch.Tensor] = None,
+        masks: List[torch.Tensor],
         strength_a: float = 0.8,
         strength_b: float = 0.8,
         num_inference_steps: int = 50,
@@ -451,7 +460,7 @@ class RiffusionPipeline(DiffusionPipeline):
             # compute the previous noisy sample x_t -> x_t-1
             latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
 
-            if mask is not None:
+            if masks is not None:
                 # this part is to align the timestep of original latent and the
                 # timestep of the current denoised latent (to ensure sampling consistency between content and style?)
                 init_latents_proper = self.scheduler.add_noise(
@@ -464,9 +473,14 @@ class RiffusionPipeline(DiffusionPipeline):
                 # ϕmix = (1−λ)·ϕstyle1 + λ·ϕstyle2 --> mix style, can generalize to multiple styles
                 # ϕguided= ϕcontent + β·(ϕmix−ϕcontent) --> style injection method
 
+                mask_mix = 0
+                for i, mask in enumerate(masks):
+                    mask_mix += LAMBDA[i] * mask
+
                 # NOTE mask contains weak style and content, while 1-mask enhances style and content,
                 # this is because mask is processed as (1-mask) during preprocessing
-                latents = (init_latents_proper * mask) + (latents * (1 - mask))
+                latents = latents + BETA*(mask_mix - latents)
+                # latents = (init_latents_proper * mask) + (latents * (1 - mask))
 
         # NOTE performs vae decoding
         latents = 1.0 / 0.18215 * latents

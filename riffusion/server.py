@@ -150,10 +150,20 @@ def compute_request(
     # NOTE pass mask image here
     # mask_image = PIL.Image.open("...png").convert("RGB")
     if inputs.mask_image_path:
-        mask_image_path = Path(f"{inputs.mask_image_path}.png")
-        if not mask_image_path.is_file():
-            return f"Invalid mask image: {inputs.mask_image_path}", 400
-        mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB")
+        # multi style mask
+        if isinstance(inputs.mask_image_path, list):
+            mask_image = []
+            for mask_image_path in inputs.mask_image_path:
+                mask_image_path = Path(f"{mask_image_path}.png")
+                if not mask_image_path.is_file():
+                    return f"Invalid mask image: {mask_image_path}", 400
+                mask_image.append(PIL.Image.open(str(mask_image_path)).convert("RGB"))
+        else:
+            # single style mask
+            mask_image_path = Path(f"{inputs.mask_image_path}.png")
+            if not mask_image_path.is_file():
+                return f"Invalid mask image: {inputs.mask_image_path}", 400
+            mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB")
 
     # Execute the model to get the spectrogram image
     image = pipeline.riffuse(
