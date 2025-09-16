@@ -81,7 +81,7 @@ class InferenceInput:
     seed_image_path: str = None
 
     # ID of mask image to use
-    mask_image_path: T.Union[str, T.List[str], None]
+    mask_image_path: T.Union[str, T.List[str], None] = None
 
     # output path
     output_path: str = None
