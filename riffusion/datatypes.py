@@ -81,13 +81,10 @@ class InferenceInput:
     seed_image_path: str = None
 
     # ID of mask image to use
-    mask_image_path: T.Union[str, T.List[str], None] = None
+    mask_image_path: T.Union[T.List[str]] = None
 
     # output path
     output_path: str = None
-
-    # mix tone option
-    mix_tone: bool = False
 
 @dataclass(frozen=True)
 class InferenceOutput:

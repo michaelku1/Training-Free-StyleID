@@ -171,7 +171,7 @@ def compute_request(
             print(f"DEBUG: Checking single mask: {mask_image_path}")
             if not mask_image_path.is_file():
                 return f"Invalid mask image: {inputs.mask_image_path}", 400
-            mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB"))
+            mask_image = PIL.Image.open(str(mask_image_path)).convert("RGB")
 
     # Execute the model to get the spectrogram image
     image = pipeline.riffuse(
@@ -220,7 +220,7 @@ def compute_request(
     gc.collect()
     torch.cuda.empty_cache()  # free cached memory
     torch.cuda.ipc_collect()  # (optional) reclaim inter-process memory
-    
+
     output_name = f"{''.join(inputs.seed_image_path.split('/')[-2:])}_to_{''.join(inputs.mask_image_path.split('/')[-2:])}"
 
     with open(f"{inputs.output_path}/{output_name}.json", "w") as f:
