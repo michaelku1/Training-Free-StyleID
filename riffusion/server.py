@@ -23,8 +23,6 @@ from riffusion.datatypes import InferenceInput, InferenceOutput
 
 # NOTE riffusion pipeline with only one input (no interpolation)
 from riffusion.riffusion_pipeline_mix_tone import RiffusionPipeline
-# from riffusion.datatypes import InferenceInputSimple, InferenceOutput
-# from riffusion.riffusion_pipeline_simple import RiffusionPipelineSimple
 
 
 from riffusion.spectrogram_image_converter import SpectrogramImageConverter
@@ -219,11 +217,17 @@ def compute_request(
     del image, mask_image, init_image  # delete big tensors
     gc.collect()
     torch.cuda.empty_cache()  # free cached memory
-    torch.cuda.ipc_collect()  # (optional) reclaim inter-process memory
+    torch.cuda.ipc_collect()  # (optional) reclaim inter-process memorys
 
-    output_name = f"{''.join(inputs.seed_image_path.split('/')[-2:])}_to_{''.join(inputs.mask_image_path.split('/')[-2:])}"
 
-    with open(f"{inputs.output_path}/{output_name}.json", "w") as f:
+    clean_to_style_output_name = f"{''.join(inputs.seed_image_path.split('/')[-2:])}_to_{''.join(inputs.mask_image_path[0].split('/')[-2:])}"
+    for i, mask_image_path in enumerate(inputs.mask_image_path):
+        if i == 0:
+            final_output_name = clean_to_style_output_name
+        else:
+            final_output_name = f"{final_output_name}_and_{''.join(mask_image_path.split('/')[-2:])}" + "_" + str(i)
+        
+    with open(f"{inputs.output_path}/{final_output_name}.json", "w") as f:
         json.dump(dataclasses.asdict(output), f, indent=2, ensure_ascii=False)
 
     return output

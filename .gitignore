@@ -6,6 +6,10 @@ __pycache__/
 stable_audio_api/sample_data/
 stable_audio_api/output/
 
+data_acoustic/
+data_mixing/
+data_tone/
+
 riffusion/seed_images/
 riffusion/mask_processed.png
 riffusion/debug_mel_spectrogram/
