@@ -22,7 +22,8 @@ torch.backends.cuda.preferred_linalg_library('magma')
 from riffusion.datatypes import InferenceInput, InferenceOutput
 
 # NOTE riffusion pipeline with only one input (no interpolation)
-from riffusion.riffusion_pipeline_mix_tone import RiffusionPipeline
+# from riffusion.riffusion_pipeline_mix_tone import RiffusionPipeline
+from riffusion.riffusion_pipeline import RiffusionPipeline
 
 
 from riffusion.spectrogram_image_converter import SpectrogramImageConverter

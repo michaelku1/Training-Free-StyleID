@@ -6,20 +6,22 @@
 ## riffusion
 generate spectrograms --> riffusion/spectrogram_image_converter.py
 
-batch generate spectrograms --> generate_spectrograms.sh
+batch generate spectrograms --> bash_scripts/generate_spectrograms.sh
 
 ```bash
-# Generate spectrograms for all tones using DI_1
-# Usage: ./generate_spectrograms.sh [max_files_per_tone] [audio_base_path]
+# Generate spectrograms for instrument directories - works with three-level structure
+# Usage: ./bash_scripts/generate_spectrograms.sh [max_files_per_instrument] [instrument_path]
 
-# Default: 5 files from each tone
-./generate_spectrograms.sh
+# Process 5 files from accordion instrument
+./bash_scripts/generate_spectrograms.sh 5 ./riffusion-hobby/data_acoustic/musicTI/accordion
 
-# 2 files from each tone in EGDB-Large-Subset
-./generate_spectrograms.sh 2 "/home/mku666/riffusion-hobby/sample_data/fx_data/EGDB-Large-Subset"
+# Process 3 files from violin instrument  
+./bash_scripts/generate_spectrograms.sh 3 ./riffusion-hobby/data_acoustic/musicTI/violin
 
-# 10 files from each tone in EGDB-Large/train
-./generate_spectrograms.sh 10 "/home/mku666/riffusion-hobby/sample_data/EGDB-Large/train"
+# Use default settings (5 files from accordion)
+./bash_scripts/generate_spectrograms.sh
+
+# Results are saved to: ./riffusion-hobby/results/spectrogram_images/Tone_{instrument}_files/
 ```
 
 riffusion server --> riffusion/server.py
@@ -27,15 +29,15 @@ riffusion server --> riffusion/server.py
 generation --> curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.75,"guidance":7.0},"end":{"prompt":"","seed":123,"denoising":0.75,"guidance":7.0},"alpha":0.5,"num_inference_steps":200,"seed_image_id":"Chopper_egdb_1_spectrogram_image"}'
 
 ## batch processing
-Run batch inference with custom DI directory and file count:
+The spectrogram generation script supports three-level directory structures like:
+- `/data_acoustic/musicTI/accordion/`
+- `/data_acoustic/musicTI/violin/`
 
 The script will:
-- Use wav files from `/sample_data/fx_data/EGDB-Large-Subset/AudioDI/<DI_DIRECTORY>/` as seed audio
-- Apply all available tone masks from `/sample_data/fx_data/EGDB-Large-Subset/Tone/` directory
-- Generate combinations of each seed file with each tone variation
-- Output results to `/results/audio/` (WAV files + JSON metadata)
-
-Available tone names: Moore Clean, Rhapsody, First Compression, New Guitar Icon, Gravity, Chopper, Room 808, Light House, Dark Soul, Easy Blues
+- Process all .wav files directly from the instrument directory
+- Generate spectrograms using CPU processing (to avoid CUDA memory issues)
+- Create temporary directory structure for compatibility with existing Python scripts
+- Output spectrogram images to `/results/spectrogram_images/Tone_{instrument}_files/`
 
 ## stable audio
 TBD
@@ -43,28 +45,5 @@ TBD
 ## style injection
 TBD
 
-
-
-## spectrogram batch processing
-```bash
-# Usage: ./batch_run_spectrogram.sh <SEED_DIR> <MASK_DIR> <NUM_SEED_IMAGES>
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Moore Clean_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Moore Clean_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Gravity_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Gravity_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Rhapsody_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Rhapsody_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_First Compression_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_First Compression_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_New Guitar Icon_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_New Guitar Icon_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Room 808_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Room 808_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Light House_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Light House_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Dark Soul_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Dark Soul_DI_10" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_1 "Tone_Easy Blues_DI_1" 5
-./riffusion_batch_run_inference.sh AudioDI_DI_10 "Tone_Easy Blues_DI_10" 5
 ```
 
