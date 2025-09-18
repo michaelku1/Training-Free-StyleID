@@ -11,7 +11,7 @@ CUDA_VISIBLE_DEVICES=1 python -m riffusion.server --host 127.0.0.1 --port 8080
 curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.75,"guidance":7.0},"num_inference_steps":50,"seed_image_id":"mask_beat_lines_80", "output_path": ""}'
 
 # With mask
-CUDA_VISIBLE_DEVICES=1 curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.2,"guidance":0},"num_inference_steps":50,"seed_image_path":"results/riffusion_seed_mask_images/accordian123/","mask_image_path":["./riffusion-hobby/data_acoustic/musicTI/accordion/accordion1", "./riffusion-hobby/data_acoustic/musicTI/violin/violin1"],"alpha":0,"end":{"prompt":"","seed":123,"denoising":0.2,"guidance":0}, "output_path": "./riffusion-hobby/results/acoustic-test-0918"}'
+CUDA_VISIBLE_DEVICES=1 curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.2,"guidance":0},"num_inference_steps":50,"seed_image_path":/home/mku666/riffusion-hobby/results/spectrogram_images/Tone_accordion_files/1, "mask_image_path":["/home/mku666/riffusion-hobby/results/spectrogram_images/Tone_violin_files/1"],"alpha":0,"end":{"prompt":"","seed":123,"denoising":0.2,"guidance":0}, "output_path": "/home/mku666/riffusion-hobby/results/acoustic-test-0918"}'
 ```
 
 ## 🎨 Style Transfer
