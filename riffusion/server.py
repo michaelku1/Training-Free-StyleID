@@ -62,7 +62,7 @@ def run_app(
 
     PIPELINE = RiffusionPipeline.load_checkpoint(
         checkpoint=checkpoint,
-        use_traced_unet=True,
+        use_traced_unet=False,  # Disable traced UNet to handle variable audio lengths
         device=device,
     )
     
@@ -118,7 +118,8 @@ def run_inference():
     # Log the total time
     logging.info(f"Request took {time.time() - start_time:.2f} s")
 
-    return response
+    # Convert InferenceOutput dataclass to JSON for Flask response
+    return dataclasses.asdict(response)
 
 
 def compute_request(

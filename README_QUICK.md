@@ -11,7 +11,27 @@ CUDA_VISIBLE_DEVICES=1 python -m riffusion.server --host 127.0.0.1 --port 8080
 curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.75,"guidance":7.0},"num_inference_steps":50,"seed_image_id":"mask_beat_lines_80", "output_path": ""}'
 
 # With mask
-CUDA_VISIBLE_DEVICES=1 curl -X POST http://127.0.0.1:8080/run_inference/ -H "Content-Type: application/json" -d '{"start":{"prompt":"","seed":42,"denoising":0.2,"guidance":0},"num_inference_steps":50,"seed_image_path":/home/mku666/riffusion-hobby/results/spectrogram_images/Tone_accordion_files/1, "mask_image_path":["/home/mku666/riffusion-hobby/results/spectrogram_images/Tone_violin_files/1"],"alpha":0,"end":{"prompt":"","seed":123,"denoising":0.2,"guidance":0}, "output_path": "/home/mku666/riffusion-hobby/results/acoustic-test-0918"}'
+CUDA_VISIBLE_DEVICES=1 curl -X POST http://127.0.0.1:8080/run_inference/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "start": {
+      "prompt": "",
+      "seed": 42,
+      "denoising": 0.2,
+      "guidance": 0
+    },
+    "num_inference_steps": 50,
+    "seed_image_path": "/home/mku666/riffusion-hobby/results/spectrogram_images/Tone_accordion_files/1",
+    "mask_image_path": ["/home/mku666/riffusion-hobby/results/spectrogram_images/Tone_violin_files/1"],
+    "alpha": 0,
+    "end": {
+      "prompt": "",
+      "seed": 123,
+      "denoising": 0.2,
+      "guidance": 0
+    },
+    "output_path": "/home/mku666/riffusion-hobby/results/acoustic-test-0918"
+  }'
 ```
 
 ## 🎨 Style Transfer
@@ -29,13 +49,13 @@ CUDA_VISIBLE_DEVICES=1 python styleid_inference_stableaudio.py --content_audio /
 python riffusion_activation_visualization.py --audio_path /mnt/gestalt/home/mku666/musicTI_audios/content/piano/piano1.wav --time_step 20 --attention_layer "6,7,8,9,10,11" --head 0 --prompt "electronic beats" --num_inference_steps 30 --seed 42
 
 # Spectrogram plot
-python3 spectrogram_plot.py --style_path sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav --content_path sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/2.wav --output_path results/audio_w_reverse_mask/clean2_to_chopper1.wav --save_path results/audio_w_reverse_mask/reverse_mask_clean2_to_chopper1.png
+python3 spectrogram_plot.py --style_path sample_data/fx_data/EGDB-Large-Subset/Tone/Chopper/DI_1/1.wav --content_path sample_data/fx_data/EGDB-Large-Subset/AudioDI/DI_1/2.wav --output_path results/audio_w_reverse_mask/clean2_to_chopper1.wav --save_path ./riffusion-hobby/spectrogram_plots/abc.png
 ```
 
 ## 🔧 Utils
 ```bash
 # Decode audio
-python3 decode_audio_from_base64.py --json_file_path results/audio/clean2_to_chopper1.json --output_wav_path ../results/audio/clean2_to_chopper1.wav
+python3 ./riffusion/decode_audio_from_base64.py --json_file_path results/audio/clean2_to_chopper1.json --output_wav_path ../results/audio/clean2_to_chopper1.wav
 ```
 
 ## 📝 Quick Notes

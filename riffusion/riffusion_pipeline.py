@@ -137,6 +137,8 @@ class RiffusionPipeline(DiffusionPipeline):
             )
 
             if traced_unet is not None:
+                # Store both UNets for fallback capability
+                pipeline._original_unet = pipeline.unet
                 pipeline.unet = traced_unet
 
         model = pipeline.to(device)
@@ -286,12 +288,17 @@ class RiffusionPipeline(DiffusionPipeline):
         # Prepare mask latent
         # NOTE you can define your own mask here, but as a tensor
         mask: T.Optional[torch.Tensor] = None
+        masks = []
         if mask_image:
-            vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
-            # rescale mask dimensions corresponding to vae dims
-            mask = preprocess_mask(mask_image, scale_factor=vae_scale_factor).to(
-                device=self.device, dtype=embed_start.dtype
-            )
+            for mask_img in mask_image:
+                vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
+                # rescale mask dimensions corresponding to vae dims
+                # Pass init_latents shape to ensure mask matches content dimensions
+                mask = preprocess_mask(mask_img, scale_factor=vae_scale_factor, target_latent_shape=init_latents.shape).to(
+                    device=self.device, dtype=embed_start.dtype
+                )
+
+                masks.append(mask)
 
         # print("######################### save preprocessed mask: ", mask)
         # mask.save("/home/mku666/riffusion-hobby/riffusion/mask_processed.png")
@@ -299,7 +306,7 @@ class RiffusionPipeline(DiffusionPipeline):
         outputs = self.interpolate_img2img(
             text_embeddings=text_embedding,
             init_latents=init_latents,
-            mask=mask,
+            masks=masks,
             generator_a=generator_start,
             generator_b=generator_end,
             interpolate_alpha=alpha,
@@ -320,7 +327,7 @@ class RiffusionPipeline(DiffusionPipeline):
         generator_a: torch.Generator,
         generator_b: torch.Generator,
         interpolate_alpha: float,
-        mask: T.Optional[torch.Tensor] = None,
+        masks: T.Optional[torch.Tensor] = None,
         strength_a: float = 0.8,
         strength_b: float = 0.8,
         num_inference_steps: int = 50,
@@ -435,6 +442,7 @@ class RiffusionPipeline(DiffusionPipeline):
             # scale with variance to fit unet input scale?
             latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
 
+            # breakpoint()
             # predict the noise residual
             noise_pred = self.unet(
                 latent_model_input, t, encoder_hidden_states=text_embeddings
@@ -451,12 +459,16 @@ class RiffusionPipeline(DiffusionPipeline):
             # compute the previous noisy sample x_t -> x_t-1
             latents = self.scheduler.step(noise_pred, t, latents, **extra_step_kwargs).prev_sample
             
-            if mask is not None:
+            if masks is not None and len(masks) > 0:
                 # latent with single timestep
                 init_latents_proper = self.scheduler.add_noise(
                     init_latents_orig, noise, torch.tensor([t])
                 )
 
+                # Handle multiple masks by using the first one for now
+                # TODO: Implement proper multi-mask blending
+                mask = masks[0] if isinstance(masks, list) else masks
+                
                 # NOTE mask contains weak style and content, while 1-mask enhances style and content,
                 # this is because mask is processed as (1-mask) during preprocessing
                 latents = (init_latents_proper * mask) + (latents * (1 - mask))
@@ -481,7 +493,7 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
     """
     w, h = image.size
     w, h = map(lambda x: x - x % 32, (w, h))  # resize to integer multiple of 32
-    image = image.resize((w, h), resample=Image.LANCZOS)
+    image = image.resize((w, h), resample=Image.Resampling.LANCZOS)
 
     image_np = np.array(image).astype(np.float32) / 255.0
     image_np = image_np[None].transpose(0, 3, 1, 2)
@@ -491,17 +503,29 @@ def preprocess_image(image: Image.Image) -> torch.Tensor:
     return 2.0 * image_torch - 1.0
 
 
-def preprocess_mask(mask: Image.Image, scale_factor: int = 8) -> torch.Tensor:
+def preprocess_mask(mask: Image.Image, scale_factor: int = 8, target_latent_shape: T.Optional[T.Tuple[int, ...]] = None) -> torch.Tensor:
     """
     Preprocess a mask for the model.
+    
+    Args:
+        mask: Input mask image
+        scale_factor: VAE scale factor (default: 8)
+        target_latent_shape: Optional target shape (B, C, H, W) to resize mask to match latent dimensions
     """
     # Convert to grayscale
     mask = mask.convert("L")
 
-    # Resize to integer multiple of 32
-    w, h = mask.size
-    w, h = map(lambda x: x - x % 32, (w, h))
-    mask = mask.resize((w // scale_factor, h // scale_factor), resample=Image.Resampling.NEAREST)
+    if target_latent_shape is not None:
+        # Use target latent dimensions to resize mask
+        target_h, target_w = target_latent_shape[-2], target_latent_shape[-1]
+        mask = mask.resize((target_w * scale_factor, target_h * scale_factor), resample=Image.Resampling.NEAREST)
+        # Then scale down to latent space
+        mask = mask.resize((target_w, target_h), resample=Image.Resampling.NEAREST)
+    else:
+        # Original logic: Resize to integer multiple of 32
+        w, h = mask.size
+        w, h = map(lambda x: x - x % 32, (w, h))
+        mask = mask.resize((w // scale_factor, h // scale_factor), resample=Image.Resampling.NEAREST)
 
     # Convert to numpy array and rescale
     mask_np = np.array(mask).astype(np.float32) / 255.0

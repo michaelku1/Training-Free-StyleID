@@ -58,13 +58,14 @@ echo "  Creating temporary directory structure..."
 mkdir -p "$TEMP_DI_DIR"
 
 # Create numbered symbolic links for compatibility with Python script sorting
+# Use numeric sorting to preserve original file order
 counter=1
-for wav_file in "$INSTRUMENT_PATH"/*.wav; do
+while IFS= read -r wav_file; do
     if [ -f "$wav_file" ]; then
         ln -sf "$wav_file" "$TEMP_DI_DIR/${counter}.wav"
         counter=$((counter + 1))
     fi
-done
+done < <(ls "$INSTRUMENT_PATH"/*.wav | sort -V)
 
 # Run the spectrogram generation with temporary structure
 python riffusion/spectrogram_image_converter_flexible.py \
